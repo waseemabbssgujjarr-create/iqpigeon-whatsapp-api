@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: whatsapp_api_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql, redis, intl, zip, bcmath
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          echo "DB_CONNECTION=mysql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_DATABASE=whatsapp_api_test" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_PASSWORD=root" >> .env
+          echo "REDIS_HOST=127.0.0.1" >> .env
+          echo "QUEUE_CONNECTION=redis" >> .env
+
+      - name: Migrate and seed
+        run: php artisan migrate --seed --force
+
+      - name: PHPUnit
+        run: php artisan test
+
+      - name: Frontend build
+        run: npm run build
+
+      - name: Secret scan (basic)
+        run: |
+          ! grep -R "sk_live_" --include="*.php" --include="*.js" --include="*.env" . || (echo "Possible live Stripe key" && exit 1)
