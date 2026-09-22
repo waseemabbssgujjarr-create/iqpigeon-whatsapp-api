@@ -1,37 +1,37 @@
+import SectionShell, { SectionHeader } from '../components/SectionShell';
 import Reveal from '../components/Reveal';
 
 const layers = [
-    'API key hashing',
+    'API Key',
+    'Hash storage',
     'Scope enforcement',
+    'Request validation',
     'Idempotency',
     'Encrypted credentials',
-    'Webhook signatures',
+    'Webhook signature',
     'SSRF protection',
     'Audit trail',
 ];
 
 export default function SecuritySection() {
     return (
-        <section className="py-24 sm:py-28" id="security">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <Reveal>
-                    <h2 className="text-3xl font-semibold text-white sm:text-4xl">Security layers</h2>
-                    <p className="mt-4 text-slate-400">Defense in depth for multi-tenant CRM integrations — no compliance claims beyond what the product implements.</p>
-                </Reveal>
-                <div className="mt-12 space-y-3">
-                    {layers.map((layer, i) => (
-                        <Reveal key={layer} delay={i * 60}>
-                            <div
-                                className="iqp-glass flex items-center gap-4 rounded-xl px-6 py-4"
-                                style={{ marginLeft: `${Math.min(i * 8, 48)}px` }}
-                            >
-                                <span className="font-mono text-xs text-violet-400">{String(i + 1).padStart(2, '0')}</span>
-                                <span className="text-slate-200">{layer}</span>
-                            </div>
-                        </Reveal>
-                    ))}
-                </div>
+        <SectionShell tone="ink" bridge id="security">
+            <SectionHeader title="Security stack" description="Layered controls — no compliance certifications claimed." />
+            <div className="mx-auto mt-14 max-w-xl">
+                {layers.map((layer, i) => (
+                    <Reveal key={layer} delay={i * 50}>
+                        <div className="relative flex items-center gap-4 border-l-2 border-violet-500/40 py-4 pl-6">
+                            <span className="font-mono text-xs text-violet-400">{String(i + 1).padStart(2, '0')}</span>
+                            <span className="text-lg text-slate-200">{layer}</span>
+                            {i < layers.length - 1 && (
+                                <span className="absolute -bottom-1 left-[11px] text-violet-500/50" aria-hidden="true">
+                                    ↓
+                                </span>
+                            )}
+                        </div>
+                    </Reveal>
+                ))}
             </div>
-        </section>
+        </SectionShell>
     );
 }

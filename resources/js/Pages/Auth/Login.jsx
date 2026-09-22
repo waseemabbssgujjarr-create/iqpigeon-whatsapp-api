@@ -1,65 +1,79 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
+import AuthField from '../../marketing/auth/AuthField';
+import AuthLayout from '../../marketing/auth/AuthLayout';
+import PasswordField from '../../marketing/auth/PasswordField';
 
 export default function Login({ status }) {
     const form = useForm({ email: '', password: '', remember: false });
     const { flash } = usePage().props;
+    const banner = status || flash?.status;
 
     return (
-        <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-            <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
-                <h1 className="text-xl font-semibold text-[#0f172a]">Sign in</h1>
-                {(status || flash?.status) && (
-                    <p className="mt-2 text-sm text-emerald-700">{status || flash?.status}</p>
-                )}
-                {form.errors.email && <p className="mt-2 text-sm text-red-600">{form.errors.email}</p>}
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        form.post('/login');
-                    }}
-                    className="mt-6 space-y-4"
-                >
-                    <div>
-                        <label className="block text-sm text-slate-600">Email</label>
-                        <input
-                            type="email"
-                            value={form.data.email}
-                            onChange={(e) => form.setData('email', e.target.value)}
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm text-slate-600">Password</label>
-                        <input
-                            type="password"
-                            value={form.data.password}
-                            onChange={(e) => form.setData('password', e.target.value)}
-                            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-                            required
-                        />
-                    </div>
-                    <label className="flex items-center gap-2 text-sm text-slate-600">
+        <AuthLayout
+            title="Welcome back"
+            subtitle="Sign in to manage API keys, connections, billing, and webhooks."
+            footer={
+                <>
+                    New to IQPigeon?{' '}
+                    <Link href="/signup" className="font-medium text-violet-300 hover:text-violet-200">
+                        Create account
+                    </Link>
+                </>
+            }
+        >
+            {banner && (
+                <p className="mb-5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200" role="status">
+                    {banner}
+                </p>
+            )}
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    form.post('/login');
+                }}
+                className="space-y-5"
+            >
+                <AuthField label="Email" id="email" error={form.errors.email}>
+                    <input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        value={form.data.email}
+                        onChange={(e) => form.setData('email', e.target.value)}
+                        className="iqp-auth-input w-full rounded-xl border border-slate-600/50 bg-slate-950/60 px-4 py-2.5 text-sm text-white"
+                        required
+                    />
+                </AuthField>
+                <PasswordField
+                    label="Password"
+                    id="password"
+                    autoComplete="current-password"
+                    value={form.data.password}
+                    onChange={(e) => form.setData('password', e.target.value)}
+                    error={form.errors.password}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                    <label className="flex items-center gap-2 text-slate-400">
                         <input
                             type="checkbox"
                             checked={form.data.remember}
                             onChange={(e) => form.setData('remember', e.target.checked)}
+                            className="rounded border-slate-600 bg-slate-900 text-violet-600 focus:ring-violet-500"
                         />
                         Remember me
                     </label>
-                    <button type="submit" className="w-full rounded-lg bg-violet-600 py-2 text-sm font-medium text-white">
-                        Sign in
-                    </button>
-                </form>
-                <div className="mt-4 flex justify-between text-sm">
-                    <Link href="/forgot-password" className="text-violet-700">
+                    <Link href="/forgot-password" className="font-medium text-violet-300 hover:text-violet-200">
                         Forgot password?
                     </Link>
-                    <Link href="/signup" className="text-violet-700">
-                        Create account
-                    </Link>
                 </div>
-            </div>
-        </main>
+                <button
+                    type="submit"
+                    disabled={form.processing}
+                    className="iqp-btn-primary w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                    {form.processing ? 'Signing in…' : 'Sign in'}
+                </button>
+            </form>
+        </AuthLayout>
     );
 }

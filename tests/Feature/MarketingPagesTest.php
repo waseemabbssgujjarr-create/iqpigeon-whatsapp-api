@@ -23,6 +23,7 @@ class MarketingPagesTest extends TestCase
             '/privacy',
             '/login',
             '/signup',
+            '/forgot-password',
         ];
     }
 

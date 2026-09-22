@@ -45,7 +45,7 @@ export default function MarketingHeader() {
                 scrolled ? 'iqp-glass-strong py-3 shadow-lg shadow-black/20' : 'bg-transparent py-5'
             }`}
         >
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="iqp-container flex max-w-[1400px] items-center justify-between">
                 <Link href="/" className="group flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-400">
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600/20 ring-1 ring-violet-400/40">
                         <span className="text-sm font-bold text-violet-300">IQ</span>

@@ -35,7 +35,7 @@ const columns = [
 export default function MarketingFooter() {
     return (
         <footer className="border-t border-slate-800/80 bg-[#050810]">
-            <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-4 lg:px-8">
+            <div className="iqp-container grid max-w-[1400px] gap-10 py-16 md:grid-cols-4">
                 <div>
                     <p className="text-lg font-semibold text-white">IQPigeon WhatsApp API</p>
                     <p className="mt-3 text-sm leading-relaxed text-slate-400">

@@ -183,6 +183,147 @@
     transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
+.iqp-container {
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+    .iqp-container {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+.iqp-section {
+    position: relative;
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+}
+
+@media (min-width: 1024px) {
+    .iqp-section {
+        padding-top: 7rem;
+        padding-bottom: 7rem;
+    }
+}
+
+.iqp-section--ink {
+    background: #050816;
+}
+
+.iqp-section--navy {
+    background: linear-gradient(180deg, #0a1224 0%, #0f172a 100%);
+}
+
+.iqp-section--lift {
+    background: linear-gradient(180deg, #111827 0%, #0a1224 100%);
+}
+
+.iqp-section--glow {
+    background: radial-gradient(ellipse 70% 50% at 50% 0%, rgb(109 40 217 / 0.18), transparent 55%), #050816;
+}
+
+.iqp-section--grid {
+    background-color: #0a1224;
+    background-image: radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.06) 1px, transparent 0);
+    background-size: 32px 32px;
+}
+
+.iqp-section-bridge {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(139 92 246 / 0.45), rgb(34 211 238 / 0.35), transparent);
+    opacity: 0.6;
+}
+
+.iqp-headline-xl {
+    font-size: clamp(2.25rem, 4vw, 3.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+}
+
+.iqp-headline-lg {
+    font-size: clamp(1.875rem, 3vw, 2.75rem);
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+}
+
+.iqp-auth-root {
+    background: #050816;
+}
+
+.iqp-auth-bg {
+    background: radial-gradient(ellipse 60% 50% at 0% 0%, rgb(109 40 217 / 0.25), transparent 50%),
+        radial-gradient(ellipse 50% 40% at 100% 100%, rgb(34 211 238 / 0.08), transparent 45%), #050816;
+}
+
+.iqp-auth-glow {
+    background: linear-gradient(120deg, transparent 40%, rgb(139 92 246 / 0.06) 50%, transparent 60%);
+    background-size: 200% 200%;
+    animation: iqp-gradient-shift 18s ease infinite;
+}
+
+.iqp-auth-input:focus {
+    outline: none;
+    border-color: rgb(139 92 246 / 0.65);
+    box-shadow: 0 0 0 3px rgb(139 92 246 / 0.2);
+}
+
+.iqp-auth-panel-enter,
+.iqp-auth-card-enter {
+    animation: iqp-auth-enter 0.65s ease both;
+}
+
+.iqp-auth-card-enter {
+    animation-delay: 0.08s;
+}
+
+@keyframes iqp-auth-enter {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.iqp-product-panel {
+    border: 1px solid rgb(148 163 184 / 0.12);
+    background: rgb(15 23 42 / 0.65);
+    backdrop-filter: blur(12px);
+    border-radius: 1rem;
+    box-shadow: 0 24px 64px rgb(0 0 0 / 0.35);
+}
+
+.iqp-float-panel {
+    animation: iqp-float 6s ease-in-out infinite;
+}
+
+@keyframes iqp-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .iqp-auth-glow,
+    .iqp-auth-panel-enter,
+    .iqp-auth-card-enter,
+    .iqp-float-panel {
+        animation: none !important;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .iqp-ticker-track,
     .iqp-pulse-node,

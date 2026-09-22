@@ -1,37 +1,47 @@
 import { Link, useForm } from '@inertiajs/react';
+import AuthLayout from '../../marketing/auth/AuthLayout';
 
 export default function VerifyEmail({ status }) {
     const form = useForm({});
 
     return (
-        <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-            <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
-                <h1 className="text-xl font-semibold text-[#0f172a]">Verify your email</h1>
-                <p className="mt-2 text-sm text-slate-600">
-                    Thanks for signing up. Click the link in your email, or resend the verification message.
+        <AuthLayout
+            title="Verify your email"
+            subtitle="We sent a confirmation link to your inbox. Verify your email to access the dashboard, billing, and API keys."
+        >
+            <div className="rounded-xl border border-slate-700/60 bg-slate-950/50 px-4 py-4">
+                <p className="text-sm leading-relaxed text-slate-300">
+                    Check your spam folder if you do not see the message within a few minutes. Links expire for security.
                 </p>
-                {status === 'verification-link-sent' && (
-                    <p className="mt-4 text-sm text-emerald-700">A new verification link has been sent.</p>
-                )}
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        form.post('/email/verification-notification');
-                    }}
-                    className="mt-6"
+            </div>
+            {status === 'verification-link-sent' && (
+                <p className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200" role="status">
+                    A new verification link has been sent to your email address.
+                </p>
+            )}
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    form.post('/email/verification-notification');
+                }}
+                className="mt-6 space-y-3"
+            >
+                <button
+                    type="submit"
+                    disabled={form.processing}
+                    className="iqp-btn-primary w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                    <button
-                        type="submit"
-                        disabled={form.processing}
-                        className="w-full rounded-lg bg-violet-600 py-2 text-sm font-medium text-white hover:bg-violet-700"
-                    >
-                        Resend verification email
-                    </button>
-                </form>
-                <Link href="/logout" method="post" as="button" className="mt-4 block text-center text-sm text-slate-500">
+                    {form.processing ? 'Sending…' : 'Resend verification email'}
+                </button>
+            </form>
+            <div className="mt-6 flex flex-col gap-3 text-center text-sm">
+                <Link href="/" className="text-slate-400 hover:text-violet-300">
+                    Back to homepage
+                </Link>
+                <Link href="/logout" method="post" as="button" className="text-slate-500 hover:text-slate-300">
                     Log out
                 </Link>
             </div>
-        </main>
+        </AuthLayout>
     );
 }
