@@ -13,6 +13,8 @@ class OnboardingChecklistService
      */
     public function stepsFor(User $user, ?Partner $partner): array
     {
+        $verificationEnabled = (bool) config('auth.email_verification_enabled');
+
         $steps = [
             [
                 'key' => 'account',
@@ -22,9 +24,10 @@ class OnboardingChecklistService
             ],
             [
                 'key' => 'verify_email',
-                'label' => 'Verify email',
-                'complete' => $user->hasVerifiedEmail(),
-                'href' => route('verification.notice'),
+                'label' => $verificationEnabled ? 'Verify email' : 'Verify email (disabled)',
+                'complete' => $verificationEnabled ? $user->hasVerifiedEmail() : true,
+                'href' => $verificationEnabled ? route('verification.notice') : null,
+                'disabled' => ! $verificationEnabled,
             ],
             [
                 'key' => 'choose_plan',

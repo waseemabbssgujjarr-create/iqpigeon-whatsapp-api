@@ -33,11 +33,17 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $verificationEnabled = (bool) config('auth.email_verification_enabled');
+
         $user = User::query()->create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
+
+        if (! $verificationEnabled) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
 
         $slugBase = Str::slug($validated['company']);
         $slug = $slugBase;

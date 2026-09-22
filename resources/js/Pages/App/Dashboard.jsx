@@ -65,7 +65,15 @@ export default function Dashboard({
                                         {step.label}
                                     </Link>
                                 ) : (
-                                    <span className={step.complete ? 'text-slate-600 line-through' : 'text-slate-800'}>
+                                    <span
+                                        className={
+                                            step.complete
+                                                ? step.disabled
+                                                    ? 'text-slate-500 italic'
+                                                    : 'text-slate-600 line-through'
+                                                : 'text-slate-800'
+                                        }
+                                    >
                                         {step.label}
                                     </span>
                                 )}

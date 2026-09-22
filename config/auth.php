@@ -114,4 +114,16 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Email verification
+    |--------------------------------------------------------------------------
+    |
+    | When disabled, /app routes do not require a verified email address.
+    | Verification routes and MustVerifyEmail remain available when re-enabled.
+    |
+    */
+
+    'email_verification_enabled' => filter_var(env('EMAIL_VERIFICATION_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+
 ];

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\EnsureEmailIsVerifiedWhenEnabled;
 use App\Http\Middleware\AuthenticateApiKey;
 use App\Http\Middleware\EnsurePartnerActive;
 use App\Http\Middleware\EnforceApiScopes;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->alias([
+            'verified' => EnsureEmailIsVerifiedWhenEnabled::class,
             'request.id' => AssignRequestId::class,
             'api.key' => AuthenticateApiKey::class,
             'partner.active' => EnsurePartnerActive::class,
