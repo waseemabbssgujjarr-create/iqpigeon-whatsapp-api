@@ -1,47 +1,45 @@
 import { Link } from '@inertiajs/react';
-import HeroComposition from '../components/HeroComposition';
+import MarketingPhoto from '../components/MarketingPhoto';
 import SectionShell from '../components/SectionShell';
 import Reveal from '../components/Reveal';
+import { marketingPhotos } from '../constants/marketingPhotos';
 
 export default function HeroSection() {
     return (
-        <SectionShell tone="glow" className="!pt-28 lg:!pt-32">
-            <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_1fr] lg:gap-10 xl:gap-16">
-                <div>
+        <SectionShell tone="clear" className="!pt-28 lg:!pt-36">
+            <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+                <div className="max-w-xl">
                     <Reveal>
-                        <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400">WhatsApp infrastructure</p>
+                        <p className="text-sm font-medium uppercase tracking-[0.18em] text-violet-300/90">WhatsApp infrastructure</p>
                     </Reveal>
                     <Reveal delay={60}>
-                        <h1 className="iqp-headline-xl mt-4 font-semibold text-white">
-                            The WhatsApp infrastructure behind modern CRM platforms.
+                        <h1 className="iqp-headline-xl mt-5 font-semibold text-white">
+                            WhatsApp infrastructure for CRM platforms.
                         </h1>
                     </Reveal>
                     <Reveal delay={120}>
-                        <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-400">
-                            Connect businesses to WhatsApp, send messages through one API, receive events through webhooks, and let every
-                            connected business maintain its own Meta relationship.
+                        <p className="iqp-lead mt-6">
+                            Connect businesses to WhatsApp, deliver messages through one API, and stream signed events back to your product —
+                            without owning your customers&apos; Meta billing relationship.
                         </p>
                     </Reveal>
                     <Reveal delay={180}>
                         <div className="mt-10 flex flex-wrap gap-4">
                             <Link href="/signup" className="iqp-btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold text-white">
-                                Start building <span aria-hidden="true">→</span>
+                                Start building
                             </Link>
-                            <Link href="/docs" className="iqp-btn-ghost inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold text-slate-200">
-                                Explore the API
+                            <Link href="/docs" className="iqp-btn-ghost inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold text-slate-100">
+                                API documentation
                             </Link>
-                        </div>
-                    </Reveal>
-                    <Reveal delay={220}>
-                        <div className="mt-10 flex flex-wrap gap-4 font-mono text-[10px] uppercase tracking-wider text-slate-500">
-                            <span className="rounded-full border border-slate-700/60 px-3 py-1">REST API</span>
-                            <span className="rounded-full border border-slate-700/60 px-3 py-1">Webhooks</span>
-                            <span className="rounded-full border border-slate-700/60 px-3 py-1">Embedded Signup</span>
                         </div>
                     </Reveal>
                 </div>
-                <Reveal delay={100}>
-                    <HeroComposition />
+                <Reveal delay={100} className="flex justify-center lg:justify-end">
+                    <MarketingPhoto
+                        {...marketingPhotos.hero}
+                        priority
+                        className="w-full max-w-[22rem] sm:max-w-[24rem]"
+                    />
                 </Reveal>
             </div>
         </SectionShell>

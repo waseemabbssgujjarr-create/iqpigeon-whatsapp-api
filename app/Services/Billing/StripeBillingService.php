@@ -7,6 +7,7 @@ use App\Models\Partner;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 use Stripe\Checkout\Session;
 use Stripe\Stripe;
 
@@ -53,6 +54,14 @@ class StripeBillingService
             throw new \RuntimeException('STRIPE_PRICE_ID is not configured.');
         }
 
+        Log::info('billing.stripe.checkout.creating', [
+            'partner_id' => $partner->id,
+            'plan_id' => $plan->id,
+            'plan_slug' => $plan->slug,
+            'price_id_set' => true,
+            'stripe_customer_present' => (bool) $partner->stripe_id,
+        ]);
+
         $session = Session::create([
             'customer' => $partner->stripe_id,
             'mode' => 'subscription',
@@ -77,6 +86,13 @@ class StripeBillingService
         $partner->forceFill([
             'provisioning_status' => ProvisioningStatus::CheckoutPending,
         ])->save();
+
+        Log::info('billing.stripe.checkout.created', [
+            'partner_id' => $partner->id,
+            'plan_slug' => $plan->slug,
+            'session_id' => $session->id ?? null,
+            'session_url_present' => ! empty($session->url),
+        ]);
 
         return $session;
     }

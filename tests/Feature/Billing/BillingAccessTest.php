@@ -57,8 +57,11 @@ class BillingAccessTest extends TestCase
         $plan = \App\Models\Plan::query()->where('is_active', true)->first();
 
         $this->actingAs($user)
+            ->withHeader('X-Inertia', 'true')
             ->post('/app/billing/checkout', ['plan' => $plan->slug])
-            ->assertRedirect('https://checkout.stripe.test/c/pay_test');
+            ->assertOk()
+            ->assertJsonPath('component', 'App/CheckoutRedirect')
+            ->assertJsonPath('props.redirectUrl', 'https://checkout.stripe.test/c/pay_test');
     }
 
     public function test_checkout_blocked_when_stripe_price_id_missing(): void

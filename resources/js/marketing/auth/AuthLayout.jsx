@@ -2,9 +2,10 @@ import { Link } from '@inertiajs/react';
 
 export default function AuthLayout({ title, subtitle, children, footer }) {
     return (
-        <div className="iqp-marketing iqp-auth-root min-h-screen">
-            <div className="iqp-auth-bg iqp-dot-grid relative flex min-h-screen flex-col lg:flex-row">
-                <div className="iqp-auth-glow pointer-events-none absolute inset-0" aria-hidden="true" />
+        <div className="iqp-marketing iqp-page-shell min-h-screen">
+            <div className="iqp-page-bg iqp-dot-grid" aria-hidden="true" />
+            <div className="iqp-page-glow" aria-hidden="true" />
+            <div className="iqp-page-content relative flex min-h-screen flex-col lg:flex-row">
                 <aside className="relative flex flex-col justify-between px-6 py-10 lg:w-[44%] lg:px-12 lg:py-16 xl:px-16">
                     <Link href="/" className="inline-flex items-center gap-2 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-400">
                         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/25 ring-1 ring-violet-400/40">
@@ -23,7 +24,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
                             Connect businesses with Embedded Signup, send messages through one API, and receive signed webhooks — while
                             each customer keeps its own Meta billing relationship.
                         </p>
-                        <ul className="mt-8 space-y-3 font-mono text-xs text-slate-500">
+                        <ul className="mt-8 space-y-3 text-sm text-slate-400">
                             <li className="flex items-center gap-2">
                                 <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
                                 API keys · dot-notation scopes

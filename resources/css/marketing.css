@@ -11,22 +11,52 @@
 }
 
 .iqp-marketing {
-    --iqp-grid: rgb(148 163 184 / 0.08);
-    background-color: var(--color-iqp-ink);
+    --iqp-grid: rgb(139 92 246 / 0.14);
     color: #e2e8f0;
     overflow-x: hidden;
 }
 
+/* Shared full-page background (landing + auth) */
+.iqp-page-shell {
+    position: relative;
+    min-height: 100vh;
+    background-color: #050816;
+}
+
+.iqp-page-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-color: #050816;
+    background-image: radial-gradient(circle at 1px 1px, var(--iqp-grid) 1px, transparent 0),
+        radial-gradient(ellipse 60% 50% at 0% 0%, rgb(109 40 217 / 0.28), transparent 50%),
+        radial-gradient(ellipse 50% 40% at 100% 100%, rgb(34 211 238 / 0.1), transparent 45%),
+        radial-gradient(ellipse 80% 45% at 50% -10%, rgb(109 40 217 / 0.2), transparent 55%);
+    background-size: 28px 28px, auto, auto, auto;
+}
+
+.iqp-page-glow {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(120deg, transparent 40%, rgb(139 92 246 / 0.07) 50%, transparent 60%);
+    background-size: 200% 200%;
+    animation: iqp-gradient-shift 18s ease infinite;
+}
+
+.iqp-page-content {
+    position: relative;
+    z-index: 1;
+}
+
 .iqp-marketing-bg {
-    background-image:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgb(109 40 217 / 0.35), transparent 55%),
-        radial-gradient(ellipse 60% 40% at 100% 0%, rgb(34 211 238 / 0.12), transparent 45%),
-        linear-gradient(180deg, var(--color-iqp-ink) 0%, var(--color-iqp-navy) 40%, var(--color-iqp-ink) 100%);
+    background: transparent;
 }
 
 .iqp-dot-grid {
-    background-image: radial-gradient(circle at 1px 1px, var(--iqp-grid) 1px, transparent 0);
-    background-size: 28px 28px;
+    /* Dot grid is rendered on .iqp-page-bg */
 }
 
 .iqp-glass {
@@ -185,11 +215,11 @@
 
 .iqp-container {
     width: 100%;
-    max-width: 1400px;
+    max-width: 72rem;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
 }
 
 @media (min-width: 640px) {
@@ -212,26 +242,53 @@
     }
 }
 
-.iqp-section--ink {
-    background: #050816;
+.iqp-section--ink,
+.iqp-section--navy,
+.iqp-section--lift,
+.iqp-section--glow,
+.iqp-section--grid,
+.iqp-section--clear {
+    background: transparent;
 }
 
-.iqp-section--navy {
-    background: linear-gradient(180deg, #0a1224 0%, #0f172a 100%);
+.iqp-lead {
+    font-size: 1.125rem;
+    line-height: 1.75;
+    color: rgb(203 213 225);
 }
 
-.iqp-section--lift {
-    background: linear-gradient(180deg, #111827 0%, #0a1224 100%);
+.iqp-body {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: rgb(148 163 184);
 }
 
-.iqp-section--glow {
-    background: radial-gradient(ellipse 70% 50% at 50% 0%, rgb(109 40 217 / 0.18), transparent 55%), #050816;
+.iqp-card {
+    border: 1px solid rgb(148 163 184 / 0.12);
+    background: rgb(15 23 42 / 0.35);
+    backdrop-filter: blur(8px);
 }
 
-.iqp-section--grid {
-    background-color: #0a1224;
-    background-image: radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.06) 1px, transparent 0);
-    background-size: 32px 32px;
+.iqp-photo {
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid rgb(148 163 184 / 0.15);
+    box-shadow: 0 20px 50px rgb(0 0 0 / 0.4);
+}
+
+.iqp-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.iqp-photo--portrait {
+    aspect-ratio: 4 / 5;
+}
+
+.iqp-photo--landscape {
+    aspect-ratio: 4 / 3;
 }
 
 .iqp-section-bridge {
@@ -241,14 +298,14 @@
 }
 
 .iqp-headline-xl {
-    font-size: clamp(2.25rem, 4vw, 3.5rem);
-    line-height: 1.08;
-    letter-spacing: -0.02em;
+    font-size: clamp(2.125rem, 3.5vw, 3.25rem);
+    line-height: 1.12;
+    letter-spacing: -0.025em;
 }
 
 .iqp-headline-lg {
-    font-size: clamp(1.875rem, 3vw, 2.75rem);
-    line-height: 1.12;
+    font-size: clamp(1.75rem, 2.8vw, 2.5rem);
+    line-height: 1.15;
     letter-spacing: -0.02em;
 }
 
@@ -316,6 +373,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .iqp-page-glow,
     .iqp-auth-glow,
     .iqp-auth-panel-enter,
     .iqp-auth-card-enter,

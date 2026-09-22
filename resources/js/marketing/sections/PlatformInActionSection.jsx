@@ -24,7 +24,18 @@ export default function PlatformInActionSection() {
                 title="Everything your CRM needs between the API and WhatsApp."
                 description="Simulated dashboard flow — not live production data."
             />
-            <Reveal delay={100} className="mt-12">
+            <Reveal delay={80} className="mt-10">
+                <img
+                    src="/marketing/dashboard-preview.svg"
+                    alt=""
+                    width={720}
+                    height={420}
+                    className="iqp-marketing-img mx-auto max-w-4xl"
+                    loading="lazy"
+                    decoding="async"
+                />
+            </Reveal>
+            <Reveal delay={100} className="mt-10">
                 <div className="iqp-glow-border overflow-hidden rounded-2xl border border-slate-700/40 bg-slate-950/80">
                     <div className="flex items-center gap-2 border-b border-slate-800 px-5 py-3">
                         <span className="font-mono text-xs text-slate-500">IQPigeon — message lifecycle (demo)</span>

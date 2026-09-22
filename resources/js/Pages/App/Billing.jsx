@@ -1,4 +1,5 @@
-import { router, useForm } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 
 function formatMoney(cents, currency) {
@@ -9,12 +10,22 @@ function formatMoney(cents, currency) {
 }
 
 export default function Billing({ partner, subscription, plans, stripeConfigured, checkoutNotice }) {
-    const checkout = useForm({ plan: '' });
+    const { errors } = usePage().props;
+    const [checkingOut, setCheckingOut] = useState(false);
 
     const startCheckout = (slug) => {
-        checkout.setData('plan', slug);
-        checkout.post('/app/billing/checkout');
+        router.post(
+            '/app/billing/checkout',
+            { plan: slug },
+            {
+                onStart: () => setCheckingOut(true),
+                onFinish: () => setCheckingOut(false),
+            },
+        );
     };
+
+    const planError = errors?.plan;
+    const portalError = errors?.portal;
 
     return (
         <AppLayout title="Billing">
@@ -25,6 +36,11 @@ export default function Billing({ partner, subscription, plans, stripeConfigured
             {checkoutNotice && (
                 <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     {checkoutNotice}
+                </div>
+            )}
+            {(planError || portalError) && (
+                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">
+                    {planError || portalError}
                 </div>
             )}
 
@@ -50,7 +66,9 @@ export default function Billing({ partner, subscription, plans, stripeConfigured
                             )}
                             <button
                                 type="button"
-                                onClick={() => router.post('/app/billing/portal')}
+                                onClick={() =>
+                                    router.post('/app/billing/portal', {}, { preserveScroll: true })
+                                }
                                 disabled={!stripeConfigured}
                                 className="mt-4 w-full rounded-lg bg-[#0f172a] px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
                             >
@@ -83,11 +101,11 @@ export default function Billing({ partner, subscription, plans, stripeConfigured
                                 <p className="mt-3 flex-1 text-sm text-slate-600">{plan.description}</p>
                                 <button
                                     type="button"
-                                    disabled={!stripeConfigured || checkout.processing}
+                                    disabled={!stripeConfigured || checkingOut}
                                     onClick={() => startCheckout(plan.slug)}
                                     className="mt-4 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50"
                                 >
-                                    Subscribe
+                                    {checkingOut ? 'Redirecting…' : 'Subscribe'}
                                 </button>
                             </article>
                         ))}
