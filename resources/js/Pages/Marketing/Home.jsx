@@ -1,8 +1,36 @@
-export default function Home() {
+import MarketingLayout from '../../marketing/MarketingLayout';
+import ApiDemoSection from '../../marketing/sections/ApiDemoSection';
+import ArchitectureSection from '../../marketing/sections/ArchitectureSection';
+import BillingSeparationSection from '../../marketing/sections/BillingSeparationSection';
+import CapabilityRail from '../../marketing/sections/CapabilityRail';
+import DeveloperCtaSection from '../../marketing/sections/DeveloperCtaSection';
+import EmbeddedSignupSection from '../../marketing/sections/EmbeddedSignupSection';
+import FaqSection from '../../marketing/sections/FaqSection';
+import FinalCtaSection from '../../marketing/sections/FinalCtaSection';
+import HeroSection from '../../marketing/sections/HeroSection';
+import ObservabilitySection from '../../marketing/sections/ObservabilitySection';
+import PricingSection from '../../marketing/sections/PricingSection';
+import ReliabilitySection from '../../marketing/sections/ReliabilitySection';
+import SecuritySection from '../../marketing/sections/SecuritySection';
+import UseCasesSection from '../../marketing/sections/UseCasesSection';
+
+export default function Home({ plans = [] }) {
     return (
-        <main className="min-h-screen bg-slate-950 text-white p-8">
-            <h1 className="text-3xl font-semibold">IQPigeon WhatsApp API</h1>
-            <p className="mt-4 text-slate-300">WhatsApp infrastructure for CRM companies.</p>
-        </main>
+        <MarketingLayout>
+            <HeroSection />
+            <CapabilityRail />
+            <ArchitectureSection />
+            <ApiDemoSection />
+            <ObservabilitySection />
+            <ReliabilitySection />
+            <EmbeddedSignupSection />
+            <BillingSeparationSection />
+            <SecuritySection />
+            <UseCasesSection />
+            <PricingSection plans={plans} />
+            <DeveloperCtaSection />
+            <FaqSection />
+            <FinalCtaSection />
+        </MarketingLayout>
     );
 }

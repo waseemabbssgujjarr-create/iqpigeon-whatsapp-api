@@ -18,19 +18,22 @@ use App\Http\Controllers\OAuth\MetaOAuthController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', fn () => Inertia::render('Marketing/Home'))->name('home');
-Route::get('/pricing', function () {
-    $plans = \App\Models\Plan::query()
+$marketingPlans = static function () {
+    return \App\Models\Plan::query()
         ->where('is_active', true)
         ->orderBy('sort_order')
         ->get(['slug', 'name', 'description', 'price_cents', 'currency', 'interval', 'feature_json']);
+};
 
-    return Inertia::render('Marketing/Pricing', ['plans' => $plans]);
-})->name('pricing');
+Route::get('/', fn () => Inertia::render('Marketing/Home', ['plans' => $marketingPlans()]))->name('home');
+Route::get('/pricing', fn () => Inertia::render('Marketing/Pricing', ['plans' => $marketingPlans()]))->name('pricing');
 Route::get('/features', fn () => Inertia::render('Marketing/Features'))->name('features');
 Route::get('/developers', fn () => Inertia::render('Marketing/Developers'))->name('developers');
 Route::get('/docs', fn () => Inertia::render('Marketing/Docs'))->name('docs');
 Route::get('/contact', fn () => Inertia::render('Marketing/Contact'))->name('contact');
+Route::get('/security', fn () => Inertia::render('Marketing/Security'))->name('security');
+Route::get('/terms', fn () => Inertia::render('Marketing/Terms'))->name('terms');
+Route::get('/privacy', fn () => Inertia::render('Marketing/Privacy'))->name('privacy');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');

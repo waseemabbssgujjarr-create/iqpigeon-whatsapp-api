@@ -1,0 +1,204 @@
+/* IQPigeon WhatsApp API — public marketing motion & surfaces */
+
+@theme {
+    --color-iqp-ink: #050810;
+    --color-iqp-navy: #0a1224;
+    --color-iqp-midnight: #0f172a;
+    --color-iqp-violet: #8b5cf6;
+    --color-iqp-violet-deep: #6d28d9;
+    --color-iqp-cyan: #22d3ee;
+    --color-iqp-glass: rgb(15 23 42 / 0.55);
+}
+
+.iqp-marketing {
+    --iqp-grid: rgb(148 163 184 / 0.08);
+    background-color: var(--color-iqp-ink);
+    color: #e2e8f0;
+    overflow-x: hidden;
+}
+
+.iqp-marketing-bg {
+    background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgb(109 40 217 / 0.35), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 0%, rgb(34 211 238 / 0.12), transparent 45%),
+        linear-gradient(180deg, var(--color-iqp-ink) 0%, var(--color-iqp-navy) 40%, var(--color-iqp-ink) 100%);
+}
+
+.iqp-dot-grid {
+    background-image: radial-gradient(circle at 1px 1px, var(--iqp-grid) 1px, transparent 0);
+    background-size: 28px 28px;
+}
+
+.iqp-glass {
+    background: var(--color-iqp-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgb(148 163 184 / 0.12);
+}
+
+.iqp-glass-strong {
+    background: rgb(15 23 42 / 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgb(139 92 246 / 0.2);
+    box-shadow: 0 0 0 1px rgb(34 211 238 / 0.05), 0 24px 48px rgb(0 0 0 / 0.35);
+}
+
+.iqp-glow-border {
+    position: relative;
+}
+
+.iqp-glow-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgb(139 92 246 / 0.5), rgb(34 211 238 / 0.15), rgb(139 92 246 / 0.25));
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.65;
+}
+
+.iqp-btn-primary {
+    background: linear-gradient(135deg, var(--color-iqp-violet-deep), var(--color-iqp-violet));
+    box-shadow: 0 0 24px rgb(139 92 246 / 0.35);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.iqp-btn-primary:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 0 32px rgb(139 92 246 / 0.5);
+    transform: translateY(-1px);
+}
+
+.iqp-btn-primary:focus-visible {
+    outline: 2px solid var(--color-iqp-cyan);
+    outline-offset: 3px;
+}
+
+.iqp-btn-ghost {
+    border: 1px solid rgb(148 163 184 / 0.25);
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.iqp-btn-ghost:hover {
+    border-color: rgb(139 92 246 / 0.5);
+    background: rgb(139 92 246 / 0.08);
+}
+
+.iqp-nav-link {
+    position: relative;
+    color: rgb(203 213 225);
+    transition: color 0.2s ease;
+}
+
+.iqp-nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -4px;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-iqp-violet), var(--color-iqp-cyan));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+}
+
+.iqp-nav-link:hover,
+.iqp-nav-link[aria-current='page'] {
+    color: #fff;
+}
+
+.iqp-nav-link:hover::after,
+.iqp-nav-link[aria-current='page']::after {
+    transform: scaleX(1);
+}
+
+@keyframes iqp-ticker {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes iqp-pulse-node {
+    0%,
+    100% {
+        opacity: 0.45;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+}
+
+@keyframes iqp-flow-dash {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes iqp-gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+.iqp-ticker-track {
+    animation: iqp-ticker 45s linear infinite;
+}
+
+.iqp-pulse-node {
+    animation: iqp-pulse-node 2.8s ease-in-out infinite;
+}
+
+.iqp-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.iqp-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.iqp-mobile-nav-enter {
+    opacity: 0;
+    transform: translateY(12px);
+}
+
+.iqp-mobile-nav-enter.is-open {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .iqp-ticker-track,
+    .iqp-pulse-node,
+    .iqp-hero-flow line,
+    .iqp-hero-flow circle {
+        animation: none !important;
+    }
+
+    .iqp-reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .iqp-btn-primary:hover,
+    .iqp-btn-ghost:hover {
+        transform: none;
+    }
+}
