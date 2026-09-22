@@ -29,3 +29,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Local artifacts (do not deploy)
+/iqpigeon_whatsapp_api
+*.sqlite-journal

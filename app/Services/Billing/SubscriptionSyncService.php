@@ -22,8 +22,14 @@ class SubscriptionSyncService
 
         if ($planId <= 0) {
             $priceId = $stripeSubscription->items->data[0]->price->id ?? null;
-            if ($priceId) {
-                $planId = (int) (Plan::query()->where('stripe_price_id', $priceId)->value('id') ?? 0);
+            if (is_string($priceId) && $priceId !== '') {
+                $configuredPrice = (string) config('services.stripe.price_id');
+                if ($configuredPrice !== '' && hash_equals($configuredPrice, $priceId)) {
+                    $planId = (int) (Plan::query()->where('is_active', true)->orderBy('sort_order')->value('id') ?? 0);
+                }
+                if ($planId <= 0) {
+                    $planId = (int) (Plan::query()->where('stripe_price_id', $priceId)->value('id') ?? 0);
+                }
             }
         }
 

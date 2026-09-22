@@ -18,6 +18,10 @@ export default function Billing({ partner, subscription, plans, stripeConfigured
 
     return (
         <AppLayout title="Billing">
+            <p className="mb-6 text-sm text-slate-600">
+                Your Stripe subscription pays for the <strong>IQPigeon API platform</strong> only. Meta/WhatsApp
+                messaging charges are billed separately by Meta to each connected business.
+            </p>
             {checkoutNotice && (
                 <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     {checkoutNotice}
@@ -62,7 +66,7 @@ export default function Billing({ partner, subscription, plans, stripeConfigured
                     <h2 className="mb-4 text-lg font-semibold text-[#0f172a]">Plans</h2>
                     {!stripeConfigured && (
                         <p className="mb-4 text-sm text-amber-700">
-                            Stripe is not configured in this environment. Set STRIPE_KEY and STRIPE_SECRET to enable checkout.
+                            Stripe is not configured in this environment. Set STRIPE_KEY, STRIPE_SECRET, and STRIPE_PRICE_ID to enable checkout.
                         </p>
                     )}
                     <div className="grid gap-4 md:grid-cols-2">

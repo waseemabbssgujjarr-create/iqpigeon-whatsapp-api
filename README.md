@@ -44,6 +44,8 @@ docker compose up -d
 - [Architecture](docs/ARCHITECTURE.md)
 - [Phase 0 sign-off](docs/PHASE0-SIGNOFF.md)
 - [Deployment](docs/DEPLOYMENT.md)
+- [Root VPS deploy — srv1939416](docs/VPS-ROOT-DEPLOY.md) (WhatsApp API only)
+- [Hostinger hPanel (non-root paths)](docs/HPANEL-VPS.md)
 
 ## API
 

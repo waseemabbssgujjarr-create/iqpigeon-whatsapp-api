@@ -62,6 +62,10 @@ class BillingController extends Controller
             return back()->withErrors(['plan' => 'Billing is not configured yet. Contact support.']);
         }
 
+        if (! $billing->hasCheckoutPrice()) {
+            return back()->withErrors(['plan' => 'Billing price is not configured. Set STRIPE_PRICE_ID on the server.']);
+        }
+
         $plan = Plan::query()->where('slug', $validated['plan'])->where('is_active', true)->firstOrFail();
 
         $session = $billing->createCheckoutSession($partner, $plan, $user);

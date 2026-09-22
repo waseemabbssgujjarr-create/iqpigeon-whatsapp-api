@@ -42,7 +42,7 @@ Configure `.env`:
 - `APP_URL=https://whatsappapi.iqpigeon.com`
 - `APP_DEBUG=false`
 - `DB_*`, `REDIS_*`, `QUEUE_CONNECTION=redis`
-- `STRIPE_KEY`, `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_KEY`, `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` (recurring Checkout price; swap test vs live without code changes)
 - `META_APP_ID`, `META_APP_SECRET`, `META_CONFIG_ID`, `META_WEBHOOK_VERIFY_TOKEN`, `META_GRAPH_VERSION`
 - Mail for verification / password reset
 - Partner webhook delivery (optional overrides; defaults below):

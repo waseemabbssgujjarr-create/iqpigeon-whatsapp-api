@@ -4,7 +4,7 @@ Last verified against codebase with:
 
 ```powershell
 .\tools\php.ps1 artisan migrate:fresh --seed --force
-.\tools\php.ps1 artisan test    # 80 passed
+.\tools\php.ps1 artisan test    # 84 passed
 npm run build
 ```
 
@@ -23,7 +23,7 @@ Live Stripe/Meta behavior requires real credentials in production; not verified 
 | Rate limits | Plan `rate_limit_per_minute` → 429 |
 | Idempotency | Required on mutating POSTs; TTL 24h |
 | Request IDs | `AssignRequestId` middleware |
-| Stripe webhooks | `/webhooks/stripe`, signature verify, `stripe_events` idempotency, provisioning job |
+| Stripe webhooks | `/webhooks/stripe`, signature verify, `stripe_events` idempotency, Checkout `STRIPE_PRICE_ID`, provisioning job |
 | Checkout return | Does **not** activate account (tested) |
 | Meta webhooks | Signature verify, persist, queue `ProcessMetaWebhookJob` |
 | Meta tokens | Encrypted model casts; hidden from API resources |
@@ -97,6 +97,7 @@ MAIL_FROM_NAME="${APP_NAME}"
 STRIPE_KEY=pk_live_...
 STRIPE_SECRET=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID=price_live_...
 CASHIER_CURRENCY=usd
 
 META_APP_ID=

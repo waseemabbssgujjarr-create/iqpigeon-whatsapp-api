@@ -70,6 +70,7 @@ class StripeWebhookProcessor
             'customer.subscription.created',
             'customer.subscription.updated' => $this->handleSubscriptionUpdated($event),
             'customer.subscription.deleted' => $this->handleSubscriptionDeleted($event),
+            'invoice.paid' => $this->handleInvoicePaid($event),
             'invoice.payment_failed' => $this->handleInvoicePaymentFailed($event),
             default => null,
         };
@@ -79,13 +80,7 @@ class StripeWebhookProcessor
     {
         /** @var \Stripe\Checkout\Session $session */
         $session = $event->data->object;
-        $partnerId = data_get($session->metadata, 'partner_id');
-
-        if ($partnerId === null) {
-            return;
-        }
-
-        $partner = Partner::query()->find((int) $partnerId);
+        $partner = $this->resolvePartnerFromCheckoutSession($session);
 
         if ($partner === null) {
             return;
@@ -128,6 +123,23 @@ class StripeWebhookProcessor
         $this->subscriptionSync->syncFromStripeSubscription($partner, $subscription);
     }
 
+    private function handleInvoicePaid(\Stripe\Event $event): void
+    {
+        /** @var \Stripe\Invoice $invoice */
+        $invoice = $event->data->object;
+        $partner = $this->resolvePartnerFromInvoice($invoice);
+
+        if ($partner === null) {
+            return;
+        }
+
+        $subscription = $invoice->subscription ?? null;
+
+        if ($subscription !== null && is_object($subscription)) {
+            $this->subscriptionSync->syncFromStripeSubscription($partner, $subscription);
+        }
+    }
+
     private function handleInvoicePaymentFailed(\Stripe\Event $event): void
     {
         /** @var \Stripe\Invoice $invoice */
@@ -138,22 +150,60 @@ class StripeWebhookProcessor
             return;
         }
 
-        $partner = Partner::query()->where('stripe_id', $customerId)->first();
+        $partner = $this->resolvePartnerFromInvoice($invoice);
 
         if ($partner === null) {
             return;
         }
 
-        $subscriptionId = $invoice->subscription ?? null;
+        $subscription = $invoice->subscription ?? null;
 
-        if ($subscriptionId !== null && is_object($invoice->subscription)) {
-            $this->subscriptionSync->syncFromStripeSubscription($partner, $invoice->subscription);
+        if ($subscription !== null && is_object($subscription)) {
+            $this->subscriptionSync->syncFromStripeSubscription($partner, $subscription);
         } else {
             $this->subscriptionSync->applyPartnerBillingState(
                 $partner,
                 \App\Enums\SubscriptionStatus::PastDue,
             );
         }
+    }
+
+    private function resolvePartnerFromCheckoutSession(object $session): ?Partner
+    {
+        $partnerId = data_get($session->metadata, 'partner_id');
+
+        if ($partnerId === null) {
+            return null;
+        }
+
+        $partner = Partner::query()->find((int) $partnerId);
+
+        if ($partner === null) {
+            return null;
+        }
+
+        $reference = (string) ($session->client_reference_id ?? '');
+
+        if ($reference !== '' && $reference !== (string) $partner->uuid) {
+            Log::warning('stripe.checkout.client_reference_mismatch', [
+                'partner_id' => $partner->id,
+            ]);
+
+            return null;
+        }
+
+        return $partner;
+    }
+
+    private function resolvePartnerFromInvoice(object $invoice): ?Partner
+    {
+        $customerId = (string) ($invoice->customer ?? '');
+
+        if ($customerId === '') {
+            return null;
+        }
+
+        return Partner::query()->where('stripe_id', $customerId)->first();
     }
 
     private function resolvePartnerFromSubscription(object $subscription): ?Partner

@@ -42,6 +42,7 @@ class StripeWebhookLifecycleTest extends TestCase
             'data' => [
                 'object' => [
                     'id' => 'cs_test',
+                    'client_reference_id' => (string) $partner->uuid,
                     'metadata' => ['partner_id' => (string) $partner->id],
                 ],
             ],
@@ -66,6 +67,45 @@ class StripeWebhookLifecycleTest extends TestCase
             ProvisioningStatus::PaymentConfirmed,
             $partner->fresh()->provisioning_status,
         );
+    }
+
+    public function test_checkout_completed_ignored_when_client_reference_mismatch(): void
+    {
+        Bus::fake([ProvisionPartnerJob::class]);
+
+        $secret = 'test_secret_'.bin2hex(random_bytes(8));
+        Config::set('services.stripe.webhook_secret', $secret);
+
+        $partner = Partner::factory()->inactive()->create();
+
+        $payload = json_encode([
+            'id' => 'evt_checkout_bad_ref',
+            'object' => 'event',
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_test_bad',
+                    'client_reference_id' => 'wrong-reference',
+                    'metadata' => ['partner_id' => (string) $partner->id],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->call(
+            'POST',
+            '/webhooks/stripe',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_STRIPE_SIGNATURE' => $this->sign($payload, $secret),
+            ],
+            $payload,
+        )->assertOk();
+
+        Bus::assertNotDispatched(ProvisionPartnerJob::class);
+        $this->assertSame(ProvisioningStatus::Registered, $partner->fresh()->provisioning_status);
     }
 
     public function test_subscription_deleted_suspends_partner(): void

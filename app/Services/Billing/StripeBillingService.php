@@ -14,7 +14,13 @@ class StripeBillingService
 {
     public function isConfigured(): bool
     {
-        return (string) Config::get('services.stripe.secret') !== '';
+        return (string) Config::get('services.stripe.secret') !== ''
+            && (string) Config::get('services.stripe.key') !== '';
+    }
+
+    public function hasCheckoutPrice(): bool
+    {
+        return (string) Config::get('services.stripe.price_id') !== '';
     }
 
     public function ensureStripeCustomer(Partner $partner, User $user): Partner
@@ -41,25 +47,19 @@ class StripeBillingService
         $this->bootstrapStripe();
         $partner = $this->ensureStripeCustomer($partner, $user);
 
-        $lineItem = $plan->stripe_price_id
-            ? ['price' => $plan->stripe_price_id, 'quantity' => 1]
-            : [
-                'price_data' => [
-                    'currency' => $plan->currency,
-                    'unit_amount' => $plan->price_cents,
-                    'recurring' => ['interval' => $plan->interval === 'year' ? 'year' : 'month'],
-                    'product_data' => [
-                        'name' => $plan->name,
-                        'description' => (string) ($plan->description ?? ''),
-                    ],
-                ],
-                'quantity' => 1,
-            ];
+        $priceId = (string) Config::get('services.stripe.price_id', '');
+
+        if ($priceId === '') {
+            throw new \RuntimeException('STRIPE_PRICE_ID is not configured.');
+        }
 
         $session = Session::create([
             'customer' => $partner->stripe_id,
             'mode' => 'subscription',
-            'line_items' => [$lineItem],
+            'client_reference_id' => (string) $partner->uuid,
+            'line_items' => [
+                ['price' => $priceId, 'quantity' => 1],
+            ],
             'success_url' => route('app.billing').'?checkout=returned',
             'cancel_url' => route('app.billing').'?checkout=cancelled',
             'metadata' => [
