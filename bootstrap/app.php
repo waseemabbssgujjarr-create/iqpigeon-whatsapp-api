@@ -43,6 +43,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
         ]);
+
+        // Guest middleware on /login and /signup must not send signed-in partners back to marketing home.
+        $middleware->redirectUsersTo(fn () => route('app.dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

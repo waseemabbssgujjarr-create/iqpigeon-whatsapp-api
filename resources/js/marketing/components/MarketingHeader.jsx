@@ -10,7 +10,8 @@ const nav = [
 ];
 
 export default function MarketingHeader() {
-    const { url } = usePage();
+    const { url, auth } = usePage().props;
+    const user = auth?.user;
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 
@@ -69,12 +70,20 @@ export default function MarketingHeader() {
                 </nav>
 
                 <div className="hidden items-center gap-3 md:flex">
-                    <Link href="/login" className="iqp-btn-ghost rounded-lg px-4 py-2 text-sm font-medium text-slate-200">
-                        Log in
-                    </Link>
-                    <Link href="/signup" className="iqp-btn-primary rounded-lg px-4 py-2 text-sm font-semibold text-white">
-                        Start building
-                    </Link>
+                    {user ? (
+                        <Link href="/app" className="iqp-btn-primary rounded-lg px-4 py-2 text-sm font-semibold text-white">
+                            Dashboard
+                        </Link>
+                    ) : (
+                        <>
+                            <Link href="/login" className="iqp-btn-ghost rounded-lg px-4 py-2 text-sm font-medium text-slate-200">
+                                Log in
+                            </Link>
+                            <Link href="/signup" className="iqp-btn-primary rounded-lg px-4 py-2 text-sm font-semibold text-white">
+                                Start building
+                            </Link>
+                        </>
+                    )}
                 </div>
 
                 <button
@@ -118,20 +127,32 @@ export default function MarketingHeader() {
                         ))}
                     </nav>
                     <div className="mt-auto flex flex-col gap-3">
-                        <Link
-                            href="/signup"
-                            className="iqp-btn-primary rounded-xl px-5 py-4 text-center text-base font-semibold text-white"
-                            onClick={() => setMenuOpen(false)}
-                        >
-                            Start building
-                        </Link>
-                        <Link
-                            href="/login"
-                            className="iqp-btn-ghost rounded-xl px-5 py-4 text-center text-base font-medium text-slate-200"
-                            onClick={() => setMenuOpen(false)}
-                        >
-                            Log in
-                        </Link>
+                        {user ? (
+                            <Link
+                                href="/app"
+                                className="iqp-btn-primary rounded-xl px-5 py-4 text-center text-base font-semibold text-white"
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                Dashboard
+                            </Link>
+                        ) : (
+                            <>
+                                <Link
+                                    href="/signup"
+                                    className="iqp-btn-primary rounded-xl px-5 py-4 text-center text-base font-semibold text-white"
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    Start building
+                                </Link>
+                                <Link
+                                    href="/login"
+                                    className="iqp-btn-ghost rounded-xl px-5 py-4 text-center text-base font-medium text-slate-200"
+                                    onClick={() => setMenuOpen(false)}
+                                >
+                                    Log in
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
