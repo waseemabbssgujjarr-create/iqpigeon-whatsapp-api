@@ -24,6 +24,22 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 ])]
 class WhatsappConnection extends Model
 {
+    protected static function booted(): void
+    {
+        static::saving(function (WhatsappConnection $connection): void {
+            if ($connection->connection_status !== ConnectionStatus::Active) {
+                return;
+            }
+
+            $phoneId = $connection->phone_number_id;
+
+            if ($phoneId === null || $phoneId === '') {
+                $connection->connection_status = ConnectionStatus::Pending;
+                $connection->connected_at = null;
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [

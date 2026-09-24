@@ -134,12 +134,22 @@ export default function Connections({ connections, canConnect }) {
                                             {c.connection_status === 'pending' && !c.can_resume_setup && (
                                                 <p className="mt-2 text-sm text-amber-300">Setup expired. Start a new connection.</p>
                                             )}
-                                            {c.setup_hint && c.can_resume_setup && (
+                                            {c.setup_hint && (c.can_resume_setup || c.can_sync_from_meta) && (
                                                 <p className="mt-2 text-sm text-slate-400">{c.setup_hint}</p>
                                             )}
                                             <p className="mt-2 text-xs text-slate-500">Last updated {formatWhen(c.updated_at)}</p>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
+                                            {c.can_sync_from_meta && (
+                                                <button
+                                                    type="button"
+                                                    disabled={isBusy}
+                                                    onClick={() => postOnboarding(`/app/connections/${c.uuid}/rehydrate`, `sync-${c.uuid}`)}
+                                                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                >
+                                                    {pendingAction === `sync-${c.uuid}` ? 'Syncing from Meta…' : 'Sync from Meta'}
+                                                </button>
+                                            )}
                                             {c.can_resume_setup && (
                                                 <button
                                                     type="button"

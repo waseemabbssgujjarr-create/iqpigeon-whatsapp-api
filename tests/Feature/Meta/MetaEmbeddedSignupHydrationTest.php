@@ -72,4 +72,41 @@ class MetaEmbeddedSignupHydrationTest extends TestCase
         $this->assertNotNull($credential);
         $this->assertSame('106540352242922', $credential->phone_number_id);
     }
+
+    public function test_oauth_callback_stays_pending_when_meta_returns_no_phone_numbers(): void
+    {
+        config([
+            'services.meta.app_id' => 'app-id',
+            'services.meta.app_secret' => 'app-secret',
+            'services.meta.graph_version' => 'v21.0',
+        ]);
+
+        $partner = Partner::factory()->create();
+        $connection = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'connection_status' => ConnectionStatus::Pending,
+        ]);
+
+        $rawToken = Str::random(64);
+        EmbeddedSignupSession::query()->create([
+            'partner_id' => $partner->id,
+            'whatsapp_connection_id' => $connection->id,
+            'state_token_hash' => hash('sha256', $rawToken),
+            'status' => 'pending',
+            'expires_at' => now()->addHour(),
+        ]);
+
+        Http::fake([
+            'graph.facebook.com/*' => Http::sequence()
+                ->push(['access_token' => 'customer-token'], 200)
+                ->push(['data' => ['granular_scopes' => []]], 200),
+        ]);
+
+        app(MetaEmbeddedSignupService::class)->completeCallback('auth-code', $rawToken);
+
+        $connection->refresh();
+        $this->assertSame(ConnectionStatus::Pending, $connection->connection_status);
+        $this->assertNull($connection->phone_number_id);
+    }
 }

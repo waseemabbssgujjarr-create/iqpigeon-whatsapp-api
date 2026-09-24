@@ -8,11 +8,16 @@ use App\Jobs\SendOutboundMessageJob;
 use App\Models\Message;
 use App\Models\Partner;
 use App\Models\WhatsappConnection;
+use App\Services\Meta\WhatsappConnectionHydrator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class MessageService
 {
+    public function __construct(
+        private readonly WhatsappConnectionHydrator $hydrator,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -29,6 +34,9 @@ class MessageService
                 'connection_id' => ['Connection does not belong to this partner.'],
             ]);
         }
+
+        $this->hydrator->reconcileOperationalStatus($connection);
+        $connection->refresh();
 
         if ($connection->connection_status !== ConnectionStatus::Active) {
             throw ValidationException::withMessages([

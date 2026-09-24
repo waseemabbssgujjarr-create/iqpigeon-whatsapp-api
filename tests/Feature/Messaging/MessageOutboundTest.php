@@ -210,6 +210,35 @@ class MessageOutboundTest extends TestCase
         $this->assertSame('missing_phone_number_id', $message->failure_code);
     }
 
+    public function test_post_message_rejects_fake_active_connection_without_phone_number_id(): void
+    {
+        ['partner' => $partner, 'secret' => $secret] = $this->createActivePartnerWithApiKey(['messages.send']);
+        $connection = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'external_ref' => 'fake-active',
+            'phone_number_id' => null,
+            'connection_status' => ConnectionStatus::Active,
+            'connected_at' => now(),
+        ]);
+
+        WhatsappConnectionCredential::query()->create([
+            'whatsapp_connection_id' => $connection->id,
+            'access_token' => 'encrypted-test-token',
+        ]);
+
+        $this->postJson('/api/v1/messages', [
+            'connection_id' => $connection->uuid,
+            'to' => '15557654321',
+            'type' => 'text',
+            'body' => 'Should not queue',
+        ], array_merge($this->withBearer($secret), [
+            'Idempotency-Key' => 'msg-fake-'.uniqid(),
+        ]))->assertStatus(422);
+
+        $this->assertSame(0, Message::query()->count());
+    }
+
     private function createActiveWhatsappConnection(Partner $partner): WhatsappConnection
     {
         $connection = WhatsappConnection::query()->create([

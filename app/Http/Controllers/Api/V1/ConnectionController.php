@@ -10,6 +10,7 @@ use App\Models\Partner;
 use App\Models\WhatsappConnection;
 use App\Services\ConnectionOnboardingService;
 use App\Services\CrmReturnUrlService;
+use App\Services\Meta\WhatsappConnectionHydrator;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -20,7 +21,7 @@ class ConnectionController extends Controller
         private readonly CrmReturnUrlService $returnUrls,
     ) {}
 
-    public function index(Request $request): ApiResponse
+    public function index(Request $request, WhatsappConnectionHydrator $hydrator): ApiResponse
     {
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
@@ -28,7 +29,11 @@ class ConnectionController extends Controller
         $connections = WhatsappConnection::query()
             ->where('partner_id', $partner->id)
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->each(function (WhatsappConnection $connection) use ($hydrator): void {
+                $hydrator->reconcileOperationalStatus($connection);
+                $connection->refresh();
+            });
 
         return ApiResponse::ok([
             'connections' => WhatsappConnectionResource::collection($connections),
@@ -77,7 +82,7 @@ class ConnectionController extends Controller
         ], 201);
     }
 
-    public function show(Request $request, string $id): ApiResponse
+    public function show(Request $request, string $id, WhatsappConnectionHydrator $hydrator): ApiResponse
     {
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
@@ -90,6 +95,9 @@ class ConnectionController extends Controller
         if ($connection === null) {
             return ApiResponse::error('connection_not_found', 'Connection not found.', 404);
         }
+
+        $hydrator->reconcileOperationalStatus($connection);
+        $connection->refresh();
 
         $additional = [];
 
