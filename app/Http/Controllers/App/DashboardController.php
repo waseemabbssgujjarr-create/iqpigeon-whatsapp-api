@@ -19,6 +19,7 @@ class DashboardController extends Controller
         $partner = PartnerResolver::fromUser($user);
 
         $checklist = $onboarding->stepsFor($user, $partner);
+        $onboardingSummary = $onboarding->summary($user, $partner);
         $showChecklist = ! $onboarding->isComplete($user, $partner);
 
         $apiKeySecret = null;
@@ -53,6 +54,9 @@ class DashboardController extends Controller
         return Inertia::render('App/Dashboard', [
             'showChecklist' => $showChecklist,
             'checklist' => $checklist,
+            'onboardingSummary' => $onboardingSummary,
+            'apiBaseUrl' => url('/api/v1'),
+            'connectionUuid' => $connection?->uuid,
             'flashApiKeySecret' => $apiKeySecret ?? $request->session()->pull('api_key_secret'),
             'account' => [
                 'email_verified' => $user->hasVerifiedEmail(),
