@@ -67,7 +67,9 @@ class ConnectionController extends Controller
         try {
             $result = $onboarding->startOnboarding($partner);
         } catch (\RuntimeException $exception) {
-            return back()->withErrors(['connect' => $exception->getMessage()]);
+            return redirect()
+                ->route('app.connections')
+                ->withErrors(['connect' => $exception->getMessage()]);
         }
 
         return $this->redirectToOnboarding($request, $result['onboarding_url']);
@@ -89,7 +91,9 @@ class ConnectionController extends Controller
         try {
             $result = $onboarding->resumeOnboarding($partner, $connection);
         } catch (\RuntimeException|\InvalidArgumentException $exception) {
-            return back()->withErrors(['connect' => $exception->getMessage()]);
+            return redirect()
+                ->route('app.connections')
+                ->withErrors(['connect' => $exception->getMessage()]);
         }
 
         return $this->redirectToOnboarding($request, $result['onboarding_url']);
