@@ -7,6 +7,7 @@ use App\Models\Partner;
 use App\Models\WhatsappConnection;
 use App\Models\WhatsappConnectionCredential;
 use App\Services\Meta\WhatsappConnectionHydrator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -77,13 +78,21 @@ class WhatsappConnectionHydratorTest extends TestCase
     public function test_reconcile_demotes_active_connection_missing_phone_number_id(): void
     {
         $partner = Partner::factory()->create();
-        $connection = WhatsappConnection::query()->create([
+        $now = now();
+        $connectionId = DB::table('whatsapp_connections')->insertGetId([
             'uuid' => (string) Str::uuid(),
             'partner_id' => $partner->id,
-            'connection_status' => ConnectionStatus::Active,
+            'connection_status' => ConnectionStatus::Active->value,
             'phone_number_id' => null,
-            'connected_at' => now(),
+            'connected_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
+
+        // Legacy rows can be active without phone_number_id; Eloquent create() would demote on save.
+        $connection = WhatsappConnection::query()->findOrFail($connectionId);
+        $this->assertSame(ConnectionStatus::Active, $connection->connection_status);
+        $this->assertNull($connection->phone_number_id);
 
         WhatsappConnectionCredential::query()->create([
             'whatsapp_connection_id' => $connection->id,
