@@ -7,15 +7,19 @@ use App\Models\ApiKey;
 use App\Models\Partner;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class LogApiRequest
 {
-    private float $startedAt = 0;
+    public const STARTED_AT_ATTRIBUTE = 'api_log_started_at';
+
+    /** Maximum persisted duration (24 hours in ms). Fits unsignedInteger and avoids garbage values. */
+    private const MAX_DURATION_MS = 86_400_000;
 
     public function handle(Request $request, Closure $next): Response
     {
-        $this->startedAt = microtime(true);
+        $request->attributes->set(self::STARTED_AT_ATTRIBUTE, microtime(true));
 
         return $next($request);
     }
@@ -33,20 +37,34 @@ class LogApiRequest
         /** @var ApiKey|null $apiKey */
         $apiKey = $request->attributes->get('api_key');
 
-        $durationMs = (int) round((microtime(true) - $this->startedAt) * 1000);
+        $startedAt = $request->attributes->get(self::STARTED_AT_ATTRIBUTE);
 
-        ApiRequest::query()->updateOrCreate(
-            ['request_id' => $requestId],
-            [
-                'partner_id' => $partner?->id,
-                'api_key_id' => $apiKey?->id,
-                'method' => $request->method(),
-                'path' => '/'.ltrim($request->path(), '/'),
-                'status_code' => $response->getStatusCode(),
-                'duration_ms' => $durationMs,
-                'ip' => $request->ip(),
-                'user_agent' => substr((string) $request->userAgent(), 0, 512),
-            ],
-        );
+        if (! is_float($startedAt) && ! is_int($startedAt)) {
+            return;
+        }
+
+        $durationMs = (int) round((microtime(true) - (float) $startedAt) * 1000);
+        $durationMs = max(0, min($durationMs, self::MAX_DURATION_MS));
+
+        try {
+            ApiRequest::query()->updateOrCreate(
+                ['request_id' => $requestId],
+                [
+                    'partner_id' => $partner?->id,
+                    'api_key_id' => $apiKey?->id,
+                    'method' => $request->method(),
+                    'path' => '/'.ltrim($request->path(), '/'),
+                    'status_code' => $response->getStatusCode(),
+                    'duration_ms' => $durationMs,
+                    'ip' => $request->ip(),
+                    'user_agent' => substr((string) $request->userAgent(), 0, 512),
+                ],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('api.request_log_failed', [
+                'request_id' => $requestId,
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 }

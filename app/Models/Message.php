@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'direction',
     'wa_message_id',
     'status',
+    'failure_code',
+    'failure_message',
     'from_number',
     'to_number',
     'message_type',

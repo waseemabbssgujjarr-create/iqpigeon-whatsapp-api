@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\MessageStatus;
 use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,6 +20,14 @@ class MessageResource extends JsonResource
             'connection_id' => $this->whatsappConnection?->uuid,
             'direction' => $this->direction,
             'status' => $this->status?->value ?? $this->status,
+            'failure_code' => $this->when(
+                $this->status === MessageStatus::Failed,
+                $this->failure_code,
+            ),
+            'failure_message' => $this->when(
+                $this->status === MessageStatus::Failed,
+                $this->failure_message,
+            ),
             'to' => $this->to_number,
             'from' => $this->from_number,
             'type' => $this->message_type,

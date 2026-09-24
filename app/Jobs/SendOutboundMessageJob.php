@@ -6,6 +6,7 @@ use App\Enums\MessageStatus;
 use App\Models\Message;
 use App\Models\WhatsappConnectionCredential;
 use App\Services\Meta\MetaClient;
+use App\Support\WhatsAppRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -31,24 +32,33 @@ class SendOutboundMessageJob implements ShouldQueue
         }
 
         $connection = $message->whatsappConnection;
-        $phoneNumberId = $connection->phone_number_id;
-
-        if ($phoneNumberId === null) {
-            $message->forceFill(['status' => MessageStatus::Failed])->save();
-
-            return;
-        }
 
         /** @var WhatsappConnectionCredential|null $credentials */
         $credentials = $connection->credentials;
 
         if ($credentials === null) {
-            $message->forceFill(['status' => MessageStatus::Failed])->save();
+            $this->markFailed($message, 'missing_credentials', 'WhatsApp connection has no stored Meta credentials.');
 
             return;
         }
 
-        $graphBody = $this->buildGraphPayload($message);
+        $phoneNumberId = $connection->phone_number_id ?? $credentials->phone_number_id;
+
+        if ($phoneNumberId === null || $phoneNumberId === '') {
+            $this->markFailed($message, 'missing_phone_number_id', 'WhatsApp phone number ID is not configured on this connection.');
+
+            return;
+        }
+
+        $to = WhatsAppRecipient::normalizeForGraph((string) $message->to_number);
+
+        if ($to === '') {
+            $this->markFailed($message, 'invalid_recipient', 'Recipient phone number is empty or invalid after normalization.');
+
+            return;
+        }
+
+        $graphBody = $this->buildGraphPayload($message, $to);
 
         $response = $metaClient->graph(
             'POST',
@@ -58,32 +68,62 @@ class SendOutboundMessageJob implements ShouldQueue
         );
 
         if ($response->failed()) {
+            $providerCode = (string) data_get($response->json(), 'error.code', '');
+            $providerMessage = (string) data_get($response->json(), 'error.message', 'Meta Graph request failed.');
+            $providerType = (string) data_get($response->json(), 'error.type', '');
+
             Log::warning('message.send_failed', [
                 'message_id' => $message->id,
-                'status' => $response->status(),
+                'http_status' => $response->status(),
+                'provider_type' => $providerType !== '' ? $providerType : null,
+                'provider_code' => $providerCode !== '' ? $providerCode : null,
             ]);
-            $message->forceFill(['status' => MessageStatus::Failed])->save();
+
+            $detail = trim($providerMessage);
+            if ($providerCode !== '') {
+                $detail = 'Meta error '.$providerCode.': '.$detail;
+            }
+            $detail = 'HTTP '.$response->status().'. '.$detail;
+
+            $this->markFailed($message, 'graph_request_failed', substr($detail, 0, 2000));
 
             return;
         }
 
         $waMessageId = (string) data_get($response->json(), 'messages.0.id', '');
 
+        if ($waMessageId === '') {
+            $this->markFailed($message, 'graph_invalid_response', 'Meta Graph returned success but no WhatsApp message id.');
+
+            return;
+        }
+
         $message->forceFill([
             'status' => MessageStatus::Sent,
-            'wa_message_id' => $waMessageId !== '' ? $waMessageId : null,
+            'wa_message_id' => $waMessageId,
             'sent_at' => now(),
+            'failure_code' => null,
+            'failure_message' => null,
+        ])->save();
+    }
+
+    private function markFailed(Message $message, string $code, string $detail): void
+    {
+        $message->forceFill([
+            'status' => MessageStatus::Failed,
+            'failure_code' => $code,
+            'failure_message' => $detail,
         ])->save();
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function buildGraphPayload(Message $message): array
+    private function buildGraphPayload(Message $message, string $toDigits): array
     {
         $payload = [
             'messaging_product' => 'whatsapp',
-            'to' => (string) $message->to_number,
+            'to' => $toDigits,
         ];
 
         if ($message->message_type === 'template') {

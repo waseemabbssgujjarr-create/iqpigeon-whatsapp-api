@@ -77,10 +77,21 @@ class MetaEmbeddedSignupService
 
         $this->hydrateConnectionFromGraph($connection, $accessToken);
 
+        $connection->refresh();
+
+        $hasPhone = $connection->phone_number_id !== null && $connection->phone_number_id !== '';
+
         $connection->forceFill([
-            'connection_status' => ConnectionStatus::Active,
-            'connected_at' => now(),
+            'connection_status' => $hasPhone ? ConnectionStatus::Active : ConnectionStatus::Pending,
+            'connected_at' => $hasPhone ? now() : null,
         ])->save();
+
+        if (! $hasPhone) {
+            Log::warning('meta.oauth.connection_not_hydrated', [
+                'connection_id' => $connection->id,
+                'session_id' => $session->id,
+            ]);
+        }
 
         $session->forceFill([
             'status' => 'completed',
@@ -92,29 +103,84 @@ class MetaEmbeddedSignupService
 
     private function hydrateConnectionFromGraph(\App\Models\WhatsappConnection $connection, string $accessToken): void
     {
-        $response = $this->metaClient->graph('GET', 'me/phone_numbers', accessToken: $accessToken);
+        $wabaIds = $this->resolveWabaIdsFromToken($accessToken);
 
-        if ($response->failed()) {
+        foreach ($wabaIds as $wabaId) {
+            $response = $this->metaClient->graph('GET', $wabaId.'/phone_numbers', accessToken: $accessToken);
+
+            if ($response->failed()) {
+                continue;
+            }
+
+            $first = data_get($response->json(), 'data.0');
+
+            if (! is_array($first)) {
+                continue;
+            }
+
+            $phoneNumberId = data_get($first, 'id');
+
+            if ($phoneNumberId === null || $phoneNumberId === '') {
+                continue;
+            }
+
+            $connection->forceFill([
+                'phone_number_id' => $phoneNumberId,
+                'display_phone_number' => data_get($first, 'display_phone_number'),
+                'waba_id' => $wabaId,
+            ])->save();
+
+            WhatsappConnectionCredential::query()
+                ->where('whatsapp_connection_id', $connection->id)
+                ->update([
+                    'phone_number_id' => $phoneNumberId,
+                    'waba_id' => $wabaId,
+                ]);
+
             return;
         }
 
-        $first = data_get($response->json(), 'data.0');
+        Log::warning('meta.oauth.phone_numbers_unavailable', [
+            'connection_id' => $connection->id,
+            'waba_count' => count($wabaIds),
+        ]);
+    }
 
-        if (! is_array($first)) {
-            return;
+    /**
+     * @return list<string>
+     */
+    private function resolveWabaIdsFromToken(string $accessToken): array
+    {
+        $debug = $this->metaClient->graph('GET', 'debug_token', [
+            'input_token' => $accessToken,
+        ], accessToken: $this->metaClient->appAccessToken());
+
+        if ($debug->failed()) {
+            return [];
         }
 
-        $connection->forceFill([
-            'phone_number_id' => data_get($first, 'id'),
-            'display_phone_number' => data_get($first, 'display_phone_number'),
-            'waba_id' => data_get($first, 'whatsapp_business_account_id'),
-        ])->save();
+        $ids = [];
 
-        WhatsappConnectionCredential::query()
-            ->where('whatsapp_connection_id', $connection->id)
-            ->update([
-                'phone_number_id' => data_get($first, 'id'),
-                'waba_id' => data_get($first, 'waba_id'),
-            ]);
+        foreach (data_get($debug->json(), 'data.granular_scopes', []) as $scope) {
+            if (! is_array($scope)) {
+                continue;
+            }
+
+            $scopeName = (string) ($scope['scope'] ?? '');
+
+            if (! str_contains($scopeName, 'whatsapp')) {
+                continue;
+            }
+
+            foreach ($scope['target_ids'] ?? [] as $targetId) {
+                if (is_string($targetId) && $targetId !== '') {
+                    $ids[] = $targetId;
+                } elseif (is_int($targetId)) {
+                    $ids[] = (string) $targetId;
+                }
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 }
