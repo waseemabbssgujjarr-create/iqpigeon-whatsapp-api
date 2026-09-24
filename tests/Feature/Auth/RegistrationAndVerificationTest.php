@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -12,6 +13,25 @@ use Tests\TestCase;
 class RegistrationAndVerificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    private mixed $originalEmailVerificationEnabled = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->originalEmailVerificationEnabled = config('auth.email_verification_enabled');
+        Config::set('auth.email_verification_enabled', true);
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->originalEmailVerificationEnabled !== null) {
+            Config::set('auth.email_verification_enabled', $this->originalEmailVerificationEnabled);
+        }
+
+        parent::tearDown();
+    }
 
     public function test_registration_creates_partner_and_redirects(): void
     {
