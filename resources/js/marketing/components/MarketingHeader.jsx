@@ -10,8 +10,8 @@ const nav = [
 ];
 
 export default function MarketingHeader() {
-    const { url, auth } = usePage().props;
-    const user = auth?.user;
+    const { url, props } = usePage();
+    const user = props.auth?.user;
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 

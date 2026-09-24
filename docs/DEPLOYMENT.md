@@ -152,7 +152,38 @@ Workers must run continuously (`queue:work redis`) so retries are processed.
 
 The app trusts `X-Forwarded-*` from the reverse proxy (`bootstrap/app.php`). Terminate TLS at Nginx and set `SESSION_SECURE_COOKIE=true` in production `.env`.
 
-## 7. Rollback
+## 7. Release update (path on VPS)
+
+App root is **`/var/www/iqpigeon-whatsapp-api`** (not `/var/www/whatsappapi`).
+
+```bash
+cd /var/www/iqpigeon-whatsapp-api
+git fetch origin && git checkout master && git pull origin master
+composer install --no-dev --optimize-autoloader --no-interaction
+npm ci && npm run build
+php artisan migrate --force
+php artisan config:cache
+php artisan view:cache
+# Optional: php artisan route:cache — marketing routes use closures; if anything 404s, run route:clear
+sudo chown -R www-data:www-data storage bootstrap/cache
+# Reload PHP-FPM (service name varies): sudo systemctl reload php8.3-fpm || sudo systemctl reload php8.2-fpm
+```
+
+`php artisan test` is **not** available after `composer install --no-dev` (PHPUnit is a dev dependency). Run tests in CI or locally before deploy.
+
+### Blank white marketing pages
+
+If HTML loads but the page is empty, check the browser console for a React error, hard-refresh, then:
+
+```bash
+cd /var/www/iqpigeon-whatsapp-api
+php artisan optimize:clear
+npm run build
+```
+
+Ensure `public/build/manifest.json` asset hashes match the `@vite` tags in the page source.
+
+## 8. Rollback
 
 ```bash
 cd /var/www/iqpigeon-whatsapp-api
@@ -164,7 +195,7 @@ php artisan queue:restart
 sudo supervisorctl restart iqp-api-queue:*
 ```
 
-## 8. Health checks
+## 9. Health checks
 
 - `GET https://whatsappapi.iqpigeon.com/up`
 - Monitor queue depth, failed jobs, Stripe/Meta webhook 4xx/5xx rates
