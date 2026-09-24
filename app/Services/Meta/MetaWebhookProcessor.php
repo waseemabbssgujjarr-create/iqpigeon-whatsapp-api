@@ -5,10 +5,15 @@ namespace App\Services\Meta;
 use App\Jobs\DeliverPartnerWebhookJob;
 use App\Jobs\ProcessMetaWebhookJob;
 use App\Models\SystemEvent;
+use App\Services\Messaging\MetaMessageStatusSync;
 use Illuminate\Support\Str;
 
 class MetaWebhookProcessor
 {
+    public function __construct(
+        private readonly MetaMessageStatusSync $messageStatusSync,
+    ) {}
+
     public function persistAndDispatch(array $payload): void
     {
         $externalId = $this->resolveExternalId($payload);
@@ -97,6 +102,8 @@ class MetaWebhookProcessor
         if ($connection === null) {
             return;
         }
+
+        $this->messageStatusSync->applyFromWebhookValue($value);
 
         $eventType = (string) ($change['field'] ?? 'meta.webhook');
         $eventId = (string) Str::uuid();
