@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class ConnectionController extends Controller
 {
@@ -58,7 +59,7 @@ class ConnectionController extends Controller
         ]);
     }
 
-    public function start(Request $request, ConnectionOnboardingService $onboarding): RedirectResponse
+    public function start(Request $request, ConnectionOnboardingService $onboarding): RedirectResponse|HttpResponse
     {
         $partner = PartnerResolver::fromUser($request->user());
         abort_if($partner === null || $partner->owner_user_id !== $request->user()->id, 403);
@@ -69,14 +70,14 @@ class ConnectionController extends Controller
             return back()->withErrors(['connect' => $exception->getMessage()]);
         }
 
-        return redirect()->away($result['onboarding_url']);
+        return $this->redirectToOnboarding($request, $result['onboarding_url']);
     }
 
     public function continueSetup(
         Request $request,
         string $uuid,
         ConnectionOnboardingService $onboarding,
-    ): RedirectResponse {
+    ): RedirectResponse|HttpResponse {
         $partner = PartnerResolver::fromUser($request->user());
         abort_if($partner === null || $partner->owner_user_id !== $request->user()->id, 403);
 
@@ -91,7 +92,16 @@ class ConnectionController extends Controller
             return back()->withErrors(['connect' => $exception->getMessage()]);
         }
 
-        return redirect()->away($result['onboarding_url']);
+        return $this->redirectToOnboarding($request, $result['onboarding_url']);
+    }
+
+    private function redirectToOnboarding(Request $request, string $onboardingUrl): RedirectResponse|HttpResponse
+    {
+        if ($request->inertia()) {
+            return Inertia::location($onboardingUrl);
+        }
+
+        return redirect()->away($onboardingUrl);
     }
 
     public function destroy(Request $request, string $uuid): RedirectResponse
