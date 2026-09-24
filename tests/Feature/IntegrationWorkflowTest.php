@@ -10,11 +10,13 @@ use App\Models\WebhookEndpoint;
 use App\Models\WhatsappConnection;
 use App\Services\IntegrationWorkflowService;
 use Database\Seeders\ApiScopeSeeder;
+use Tests\Concerns\CreatesApiPartners;
 use Tests\Concerns\CreatesDashboardUsers;
 use Tests\TestCase;
 
 class IntegrationWorkflowTest extends TestCase
 {
+    use CreatesApiPartners;
     use CreatesDashboardUsers;
 
     public function test_workflow_reflects_real_partner_state(): void
