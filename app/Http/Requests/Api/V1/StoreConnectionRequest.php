@@ -18,6 +18,7 @@ class StoreConnectionRequest extends FormRequest
     {
         return [
             'external_ref' => ['nullable', 'string', 'max:255'],
+            'return_url' => ['nullable', 'string', 'url', 'max:2048'],
             'metadata' => ['nullable', 'array'],
         ];
     }

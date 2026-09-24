@@ -45,10 +45,24 @@ class WebhookEndpointController extends Controller
                 ->get(['id', 'uuid', 'event_type', 'status', 'attempt_count', 'response_status', 'created_at', 'webhook_endpoint_id'])
             : collect();
 
+        $lastTest = $partner
+            ? WebhookDelivery::query()
+                ->where('partner_id', $partner->id)
+                ->where('event_type', 'webhook.test')
+                ->orderByDesc('id')
+                ->first(['status', 'response_status', 'created_at'])
+            : null;
+
         return Inertia::render('App/Webhooks', [
             'endpoints' => $endpoints,
             'recentDeliveries' => $deliveries,
             'flashSecret' => $request->session()->pull('webhook_endpoint_secret'),
+            'lastWebhookTest' => $lastTest ? [
+                'status' => $lastTest->status->value,
+                'http' => $lastTest->response_status,
+                'at' => $lastTest->created_at?->toIso8601String(),
+                'reachable' => $lastTest->status === \App\Enums\WebhookDeliveryStatus::Delivered,
+            ] : null,
         ]);
     }
 
@@ -61,6 +75,7 @@ class WebhookEndpointController extends Controller
             'url' => ['required', 'url', 'max:2048', new SafeWebhookUrl],
             'events' => ['nullable', 'array'],
             'events.*' => ['string', 'max:128'],
+            'test_after_save' => ['sometimes', 'boolean'],
         ]);
 
         $secret = Str::random(32);
@@ -75,9 +90,19 @@ class WebhookEndpointController extends Controller
 
         $audit->log('webhook_endpoint.created', $partner, $request->user(), $endpoint);
 
+        if ($request->boolean('test_after_save')) {
+            DeliverPartnerWebhookJob::dispatch(
+                $partner->id,
+                'webhook.test',
+                'test_'.Str::uuid(),
+                ['endpoint_id' => $endpoint->id, 'message' => 'Test delivery from IQPigeon dashboard'],
+            );
+        }
+
         return redirect()
             ->route('app.webhooks')
-            ->with('webhook_endpoint_secret', $secret);
+            ->with('webhook_endpoint_secret', $secret)
+            ->with('status', $request->boolean('test_after_save') ? 'Webhook saved — test delivery queued.' : 'Webhook saved.');
     }
 
     public function update(Request $request, int $id, AuditLogService $audit): RedirectResponse

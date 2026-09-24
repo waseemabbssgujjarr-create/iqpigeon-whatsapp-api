@@ -65,4 +65,11 @@ return [
         'user_agent' => env('META_USER_AGENT', 'IQPigeon-WhatsApp-API'),
     ],
 
+    'iqpigeon' => [
+        'crm_return_url_allowlist' => array_filter(array_map(
+            'trim',
+            explode(',', (string) env('IQPIGEON_CRM_RETURN_URL_ALLOWLIST', '')),
+        )),
+    ],
+
 ];

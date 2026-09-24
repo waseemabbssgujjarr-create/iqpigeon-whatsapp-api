@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\App\ApiKeyController;
 use App\Http\Controllers\App\BillingController;
+use App\Http\Controllers\App\BuildCrmController;
 use App\Http\Controllers\App\ConnectionController;
 use App\Http\Controllers\App\DashboardController;
 use App\Http\Controllers\App\SettingsController;
@@ -76,6 +77,20 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('/connections', [ConnectionController::class, 'index'])->name('connections');
     Route::post('/connections/start', [ConnectionController::class, 'start'])->name('connections.start');
+    Route::post('/connections/{uuid}/continue', [ConnectionController::class, 'continueSetup'])->name('connections.continue');
+    Route::delete('/connections/{uuid}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
+    Route::redirect('/build', '/app/build/getting-started')->name('build.index');
+    Route::get('/build/getting-started', [BuildCrmController::class, 'gettingStarted'])->name('build.getting-started');
+    Route::get('/build/authentication', [BuildCrmController::class, 'authentication'])->name('build.authentication');
+    Route::get('/build/whatsapp-connection', [BuildCrmController::class, 'whatsAppConnection'])->name('build.whatsapp-connection');
+    Route::get('/build/send-messages', [BuildCrmController::class, 'sendMessages'])->name('build.send-messages');
+    Route::get('/build/receive-messages', [BuildCrmController::class, 'receiveMessages'])->name('build.receive-messages');
+    Route::get('/build/message-status', [BuildCrmController::class, 'messageStatus'])->name('build.message-status');
+    Route::get('/build/webhooks', [BuildCrmController::class, 'webhooks'])->name('build.webhooks');
+    Route::get('/build/idempotency', [BuildCrmController::class, 'idempotency'])->name('build.idempotency');
+    Route::get('/build/errors', [BuildCrmController::class, 'errors'])->name('build.errors');
+    Route::get('/build/code-examples', [BuildCrmController::class, 'codeExamples'])->name('build.code-examples');
+    Route::get('/build/api-reference', [BuildCrmController::class, 'apiReference'])->name('build.api-reference');
     Route::get('/api-keys', [ApiKeyController::class, 'index'])->name('api-keys');
     Route::post('/api-keys', [ApiKeyController::class, 'store'])->name('api-keys.store');
     Route::delete('/api-keys/{uuid}', [ApiKeyController::class, 'destroy'])->name('api-keys.destroy');
@@ -91,4 +106,7 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::patch('/settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.profile');
     Route::put('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
+    Route::patch('/settings/integration', [SettingsController::class, 'updateIntegration'])->name('settings.integration');
+    Route::post('/settings/integration-signing-secret', [SettingsController::class, 'generateIntegrationSigningSecret'])
+        ->name('settings.integration-signing-secret');
 });

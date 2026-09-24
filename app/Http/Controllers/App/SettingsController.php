@@ -7,6 +7,7 @@ use App\Support\PartnerResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,8 +28,48 @@ class SettingsController extends Controller
             'partner' => $partner ? [
                 'name' => $partner->name,
                 'slug' => $partner->slug,
+                'allowed_return_urls' => data_get($partner->metadata, 'allowed_return_urls', []),
+                'has_integration_signing_secret' => is_string(data_get($partner->metadata, 'integration_signing_secret'))
+                    && strlen((string) data_get($partner->metadata, 'integration_signing_secret')) >= 16,
             ] : null,
+            'flashIntegrationSigningSecret' => $request->session()->pull('integration_signing_secret'),
         ]);
+    }
+
+    public function updateIntegration(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $partner = PartnerResolver::fromUser($user);
+        abort_if($partner === null || $partner->owner_user_id !== $user->id, 403);
+
+        $validated = $request->validate([
+            'allowed_return_urls' => ['nullable', 'array', 'max:20'],
+            'allowed_return_urls.*' => ['string', 'url', 'max:2048'],
+        ]);
+
+        $urls = array_values(array_unique(array_filter($validated['allowed_return_urls'] ?? [])));
+        $metadata = is_array($partner->metadata) ? $partner->metadata : [];
+        $metadata['allowed_return_urls'] = $urls;
+
+        $partner->forceFill(['metadata' => $metadata])->save();
+
+        return back()->with('status', 'CRM integration settings saved.');
+    }
+
+    public function generateIntegrationSigningSecret(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $partner = PartnerResolver::fromUser($user);
+        abort_if($partner === null || $partner->owner_user_id !== $user->id, 403);
+
+        $secret = Str::random(32);
+        $metadata = is_array($partner->metadata) ? $partner->metadata : [];
+        $metadata['integration_signing_secret'] = $secret;
+        $partner->forceFill(['metadata' => $metadata])->save();
+
+        return back()
+            ->with('status', 'Integration signing secret generated — copy it now.')
+            ->with('integration_signing_secret', $secret);
     }
 
     public function updateProfile(Request $request): RedirectResponse

@@ -32,6 +32,7 @@ class ApiKeyController extends Controller
                 'revoked_at' => $key->revoked_at?->toIso8601String(),
                 'expires_at' => $key->expires_at?->toIso8601String(),
                 'last_used_at' => $key->last_used_at?->toIso8601String(),
+                'created_at' => $key->created_at?->toIso8601String(),
             ]),
             'scopes' => $scopes,
             'flashSecret' => $request->session()->pull('api_key_secret'),

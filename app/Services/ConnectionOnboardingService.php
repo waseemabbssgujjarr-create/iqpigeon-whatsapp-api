@@ -26,6 +26,11 @@ class ConnectionOnboardingService
             throw new \RuntimeException('Connection limit reached or partner is not operational.');
         }
 
+        $returnUrl = isset($metadata['return_url']) && is_string($metadata['return_url'])
+            ? $metadata['return_url']
+            : null;
+        unset($metadata['return_url']);
+
         $connection = WhatsappConnection::query()->create([
             'uuid' => (string) Str::uuid(),
             'partner_id' => $partner->id,
@@ -37,12 +42,15 @@ class ConnectionOnboardingService
         $rawToken = Str::random(64);
         $expiresAt = now()->addHours(self::SESSION_TTL_HOURS);
 
+        $sessionMeta = $returnUrl !== null ? ['return_url' => $returnUrl] : null;
+
         $session = EmbeddedSignupSession::query()->create([
             'partner_id' => $partner->id,
             'whatsapp_connection_id' => $connection->id,
             'state_token_hash' => hash('sha256', $rawToken),
             'status' => 'pending',
             'expires_at' => $expiresAt,
+            'metadata' => $sessionMeta,
         ]);
 
         $onboardingUrl = url('/oauth/meta/start?token='.urlencode($rawToken));
@@ -65,5 +73,51 @@ class ConnectionOnboardingService
             ->where('expires_at', '>', now())
             ->with(['whatsappConnection', 'partner'])
             ->first();
+    }
+
+    /**
+     * @return array{onboarding_url: string, expires_at: \Illuminate\Support\Carbon}
+     */
+    public function resumeOnboarding(Partner $partner, WhatsappConnection $connection): array
+    {
+        if ($connection->partner_id !== $partner->id) {
+            throw new \InvalidArgumentException('Connection does not belong to this partner.');
+        }
+
+        if ($connection->connection_status !== ConnectionStatus::Pending) {
+            throw new \RuntimeException('Only pending connections can resume setup.');
+        }
+
+        $previousReturnUrl = EmbeddedSignupSession::query()
+            ->where('whatsapp_connection_id', $connection->id)
+            ->whereNotNull('metadata')
+            ->orderByDesc('id')
+            ->value('metadata');
+
+        EmbeddedSignupSession::query()
+            ->where('whatsapp_connection_id', $connection->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'expired']);
+
+        $rawToken = Str::random(64);
+        $expiresAt = now()->addHours(self::SESSION_TTL_HOURS);
+
+        $sessionMeta = is_array($previousReturnUrl) && isset($previousReturnUrl['return_url'])
+            ? ['return_url' => $previousReturnUrl['return_url']]
+            : null;
+
+        EmbeddedSignupSession::query()->create([
+            'partner_id' => $partner->id,
+            'whatsapp_connection_id' => $connection->id,
+            'state_token_hash' => hash('sha256', $rawToken),
+            'status' => 'pending',
+            'expires_at' => $expiresAt,
+            'metadata' => $sessionMeta,
+        ]);
+
+        return [
+            'onboarding_url' => url('/oauth/meta/start?token='.urlencode($rawToken)),
+            'expires_at' => $expiresAt,
+        ];
     }
 }

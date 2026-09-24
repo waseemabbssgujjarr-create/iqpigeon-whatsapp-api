@@ -34,7 +34,7 @@ class MetaEmbeddedSignupService
         return 'https://www.facebook.com/'.$version.'/dialog/oauth?'.$query;
     }
 
-    public function completeCallback(string $code, string $rawToken): void
+    public function completeCallback(string $code, string $rawToken): EmbeddedSignupSession
     {
         $session = $this->onboarding->findSessionByToken($rawToken);
 
@@ -86,6 +86,8 @@ class MetaEmbeddedSignupService
             'status' => 'completed',
             'completed_at' => now(),
         ])->save();
+
+        return $session->fresh(['whatsappConnection', 'partner']);
     }
 
     private function hydrateConnectionFromGraph(\App\Models\WhatsappConnection $connection, string $accessToken): void

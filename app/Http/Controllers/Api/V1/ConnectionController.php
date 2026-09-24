@@ -9,6 +9,7 @@ use App\Http\Resources\WhatsappConnectionResource;
 use App\Models\Partner;
 use App\Models\WhatsappConnection;
 use App\Services\ConnectionOnboardingService;
+use App\Services\CrmReturnUrlService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,7 @@ class ConnectionController extends Controller
 {
     public function __construct(
         private readonly ConnectionOnboardingService $onboarding,
+        private readonly CrmReturnUrlService $returnUrls,
     ) {}
 
     public function index(Request $request): ApiResponse
@@ -38,11 +40,25 @@ class ConnectionController extends Controller
         /** @var Partner $partner */
         $partner = $request->attributes->get('partner');
 
+        $payload = $request->validated('metadata') ?? [];
+        $returnUrl = $request->validated('return_url');
+
+        if (is_string($returnUrl) && $returnUrl !== '') {
+            if (! $this->returnUrls->isAllowed($partner, $returnUrl)) {
+                return ApiResponse::error(
+                    'return_url_not_allowed',
+                    'return_url must match an allowlisted CRM callback URL configured for your partner account.',
+                    422,
+                );
+            }
+            $payload['return_url'] = $returnUrl;
+        }
+
         try {
             $result = $this->onboarding->startOnboarding(
                 $partner,
                 $request->validated('external_ref'),
-                $request->validated('metadata') ?? [],
+                $payload,
             );
         } catch (\RuntimeException $exception) {
             return ApiResponse::error('connection_limit', $exception->getMessage(), 422);
