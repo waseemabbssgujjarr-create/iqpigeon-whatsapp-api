@@ -1,10 +1,12 @@
-import { Link, useForm } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import AuthField from '../../marketing/auth/AuthField';
 import AuthLayout from '../../marketing/auth/AuthLayout';
 import PasswordField from '../../marketing/auth/PasswordField';
+import SocialAuthButtons from '../../marketing/auth/SocialAuthButtons';
 
 export default function Register() {
+    const { socialAuth } = usePage().props;
     const form = useForm({
         name: '',
         company: '',
@@ -38,6 +40,7 @@ export default function Register() {
                 </>
             }
         >
+            <SocialAuthButtons socialAuth={socialAuth} mode="register" />
             <form onSubmit={submit} className="space-y-5" noValidate>
                 <AuthField label="Your name" id="name" error={form.errors.name}>
                     <input

@@ -48,6 +48,12 @@ class HandleInertiaRequests extends Middleware
                 'status' => fn () => $request->session()->get('status'),
                 'verified' => fn () => $request->query('verified') === '1',
             ],
+            'socialAuth' => fn () => [
+                'google' => (string) config('services.google.client_id') !== ''
+                    && (string) config('services.google.client_secret') !== '',
+                'facebook' => (string) config('services.facebook.client_id') !== ''
+                    && (string) config('services.facebook.client_secret') !== '',
+            ],
         ];
     }
 }

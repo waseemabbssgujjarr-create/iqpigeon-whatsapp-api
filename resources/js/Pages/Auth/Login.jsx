@@ -2,10 +2,11 @@ import { Link, useForm, usePage } from '@inertiajs/react';
 import AuthField from '../../marketing/auth/AuthField';
 import AuthLayout from '../../marketing/auth/AuthLayout';
 import PasswordField from '../../marketing/auth/PasswordField';
+import SocialAuthButtons from '../../marketing/auth/SocialAuthButtons';
 
 export default function Login({ status }) {
     const form = useForm({ email: '', password: '', remember: false });
-    const { flash } = usePage().props;
+    const { flash, socialAuth } = usePage().props;
     const banner = status || flash?.status;
 
     return (
@@ -26,6 +27,7 @@ export default function Login({ status }) {
                     {banner}
                 </p>
             )}
+            <SocialAuthButtons socialAuth={socialAuth} mode="login" />
             <form
                 onSubmit={(e) => {
                     e.preventDefault();

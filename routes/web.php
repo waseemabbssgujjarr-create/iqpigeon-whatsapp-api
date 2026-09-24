@@ -12,6 +12,8 @@ use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\FacebookOAuthController;
+use App\Http\Controllers\Auth\GoogleOAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\OAuth\MetaOAuthController;
@@ -36,6 +38,11 @@ Route::get('/terms', fn () => Inertia::render('Marketing/Terms'))->name('terms')
 Route::get('/privacy', fn () => Inertia::render('Marketing/Privacy'))->name('privacy');
 
 Route::middleware('guest')->group(function (): void {
+    Route::get('auth/google/redirect', [GoogleOAuthController::class, 'redirect'])->name('auth.google.redirect');
+    Route::get('auth/google/callback', [GoogleOAuthController::class, 'callback'])->name('auth.google.callback');
+    Route::get('auth/facebook/redirect', [FacebookOAuthController::class, 'redirect'])->name('auth.facebook.redirect');
+    Route::get('auth/facebook/callback', [FacebookOAuthController::class, 'callback'])->name('auth.facebook.callback');
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
     Route::get('signup', [RegisteredUserController::class, 'create'])->name('register');

@@ -42,6 +42,19 @@ return [
         'price_id' => env('STRIPE_PRICE_ID'),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
+    'facebook' => [
+        'client_id' => env('FACEBOOK_APP_ID', env('FACEBOOK_CLIENT_ID')),
+        'client_secret' => env('FACEBOOK_APP_SECRET', env('FACEBOOK_CLIENT_SECRET')),
+        'redirect' => env('FACEBOOK_REDIRECT_URI'),
+        'config_id' => env('FACEBOOK_LOGIN_CONFIG_ID'),
+    ],
+
     'meta' => [
         'app_id' => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),

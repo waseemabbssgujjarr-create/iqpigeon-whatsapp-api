@@ -2,17 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enums\PartnerStatus;
-use App\Enums\ProvisioningStatus;
 use App\Http\Controllers\Controller;
-use App\Models\Partner;
 use App\Models\User;
+use App\Services\Auth\PartnerProvisioner;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,7 +21,7 @@ class RegisteredUserController extends Controller
         return Inertia::render('Auth/Register');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, PartnerProvisioner $partnerProvisioner): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -45,25 +42,7 @@ class RegisteredUserController extends Controller
             $user->forceFill(['email_verified_at' => now()])->save();
         }
 
-        $slugBase = Str::slug($validated['company']);
-        $slug = $slugBase;
-        $suffix = 1;
-
-        while (Partner::query()->where('slug', $slug)->exists()) {
-            $slug = $slugBase.'-'.$suffix;
-            $suffix++;
-        }
-
-        $partner = Partner::query()->create([
-            'uuid' => (string) Str::uuid(),
-            'owner_user_id' => $user->id,
-            'name' => $validated['company'],
-            'slug' => $slug,
-            'status' => PartnerStatus::Pending,
-            'provisioning_status' => ProvisioningStatus::Registered,
-        ]);
-
-        $user->forceFill(['partner_id' => $partner->id])->save();
+        $partnerProvisioner->createForOwner($user, $validated['company']);
 
         event(new Registered($user));
 

@@ -24,5 +24,16 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(WhatsappConnection::class, WhatsappConnectionPolicy::class);
         Gate::policy(ApiKey::class, ApiKeyPolicy::class);
+
+        $this->app->booted(function (): void {
+            $base = rtrim((string) config('app.url'), '/');
+            foreach (['google', 'facebook'] as $provider) {
+                if (! config("services.{$provider}.redirect") && $base !== '') {
+                    config([
+                        "services.{$provider}.redirect" => "{$base}/auth/{$provider}/callback",
+                    ]);
+                }
+            }
+        });
     }
 }
