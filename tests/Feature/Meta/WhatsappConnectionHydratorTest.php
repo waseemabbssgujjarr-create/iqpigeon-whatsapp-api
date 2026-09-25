@@ -59,6 +59,23 @@ class WhatsappConnectionHydratorTest extends TestCase
         $this->assertSame('waba_99', $connection->waba_id);
     }
 
+    public function test_apply_operational_status_leaves_pending_when_phone_not_registered(): void
+    {
+        $partner = Partner::factory()->create();
+        $connection = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'connection_status' => ConnectionStatus::Pending,
+            'phone_number_id' => '1259226987283813',
+        ]);
+
+        app(WhatsappConnectionHydrator::class)->applyOperationalStatusAfterHydration($connection);
+
+        $connection->refresh();
+        $this->assertSame(ConnectionStatus::Pending, $connection->connection_status);
+        $this->assertTrue(data_get($connection->metadata, 'cloud_api_registration_required'));
+    }
+
     public function test_apply_operational_status_does_not_mark_active_without_phone(): void
     {
         $partner = Partner::factory()->create();
@@ -149,8 +166,41 @@ class WhatsappConnectionHydratorTest extends TestCase
         $hydrator->applyOperationalStatusAfterHydration($connection->fresh());
 
         $connection->refresh();
-        $this->assertSame(ConnectionStatus::Active, $connection->connection_status);
+        $this->assertSame(ConnectionStatus::Pending, $connection->connection_status);
         $this->assertSame('999888777', $connection->phone_number_id);
+        $this->assertTrue(data_get($connection->metadata, 'cloud_api_registration_required'));
+    }
+
+    public function test_reconcile_demotes_active_connection_without_cloud_api_registration(): void
+    {
+        $partner = Partner::factory()->create();
+        $now = now();
+        $connectionId = DB::table('whatsapp_connections')->insertGetId([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'connection_status' => ConnectionStatus::Active->value,
+            'phone_number_id' => '1259226987283813',
+            'waba_id' => '1058287677107935',
+            'connected_at' => $now,
+            'metadata' => json_encode([]),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $connection = WhatsappConnection::query()->findOrFail($connectionId);
+
+        WhatsappConnectionCredential::query()->create([
+            'whatsapp_connection_id' => $connection->id,
+            'access_token' => 'token',
+            'phone_number_id' => '1259226987283813',
+        ]);
+
+        $changed = app(WhatsappConnectionHydrator::class)->reconcileOperationalStatus($connection);
+
+        $this->assertTrue($changed);
+        $connection->refresh();
+        $this->assertSame(ConnectionStatus::Pending, $connection->connection_status);
+        $this->assertTrue(data_get($connection->metadata, 'cloud_api_registration_required'));
     }
 
     public function test_model_saving_prevents_persisting_active_without_phone_number_id(): void
@@ -162,6 +212,7 @@ class WhatsappConnectionHydratorTest extends TestCase
             'partner_id' => $partner->id,
             'connection_status' => ConnectionStatus::Active,
             'phone_number_id' => '12345',
+            'metadata' => ['cloud_api_registered_at' => now()->toIso8601String()],
         ]);
 
         $connection->forceFill([

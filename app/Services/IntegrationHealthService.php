@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Enums\ConnectionStatus;
 use App\Enums\ProvisioningStatus;
 use App\Enums\WebhookDeliveryStatus;
-use App\Models\ApiRequest;
 use App\Models\Partner;
 use App\Models\WebhookDelivery;
+use App\Services\Meta\WhatsappCloudApiRegistrationService;
 
 class IntegrationHealthService
 {
@@ -32,9 +32,17 @@ class IntegrationHealthService
 
         $hasApiKey = $partner->apiKeys()->whereNull('revoked_at')->exists();
 
-        $activeConnection = $partner->whatsappConnections()
-            ->where('connection_status', ConnectionStatus::Active)
-            ->exists();
+        $registration = app(WhatsappCloudApiRegistrationService::class);
+
+        $connections = $partner->whatsappConnections()->get();
+
+        $activeConnection = $connections->contains(
+            fn ($c) => $c->connection_status === ConnectionStatus::Active
+        );
+
+        $sendReady = $connections->contains(
+            fn ($c) => $registration->isRegisteredForSending($c)
+        );
 
         $webhook = $partner->webhookEndpoints()->where('is_active', true)->first();
 
@@ -44,13 +52,7 @@ class IntegrationHealthService
             ->where('status', WebhookDeliveryStatus::Delivered)
             ->exists();
 
-        $outbound = $partner->messages()->exists()
-            || ApiRequest::query()
-                ->where('partner_id', $partner->id)
-                ->where('path', 'like', '%/messages%')
-                ->where('status_code', '>=', 200)
-                ->where('status_code', '<', 300)
-                ->exists();
+        $outbound = $sendReady;
 
         $inbound = WebhookDelivery::query()
             ->where('partner_id', $partner->id)
@@ -64,6 +66,12 @@ class IntegrationHealthService
                 'label' => 'WhatsApp connected',
                 'ok' => $activeConnection,
                 'detail' => $activeConnection ? null : 'Connect a WhatsApp Business number.',
+            ],
+            [
+                'key' => 'whatsapp_send',
+                'label' => 'WhatsApp send ready',
+                'ok' => $sendReady,
+                'detail' => $sendReady ? null : 'Complete Cloud API phone registration (6-digit PIN) on the Connections page.',
             ],
             [
                 'key' => 'api_auth',
@@ -87,7 +95,7 @@ class IntegrationHealthService
                 'key' => 'outbound',
                 'label' => 'Outbound ready',
                 'ok' => $outbound,
-                'detail' => $outbound ? null : 'Send a message via POST /api/v1/messages.',
+                'detail' => $outbound ? null : 'Register your WhatsApp number for Cloud API sending.',
             ],
             [
                 'key' => 'inbound',
@@ -97,8 +105,8 @@ class IntegrationHealthService
             ],
         ];
 
-        $fullyReady = $activeConnection && $hasApiKey && $subscriptionReady && $webhook !== null
-            && $webhookTestDelivered && $outbound && $inbound;
+        $fullyReady = $sendReady && $hasApiKey && $subscriptionReady && $webhook !== null
+            && $webhookTestDelivered && $inbound;
 
         return [
             'ready' => $fullyReady,

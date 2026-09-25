@@ -41,8 +41,10 @@ class IntegrationWorkflowTest extends TestCase
             'uuid' => (string) \Illuminate\Support\Str::uuid(),
             'partner_id' => $readyPartner->id,
             'connection_status' => ConnectionStatus::Active,
+            'phone_number_id' => '1001',
             'display_phone_number' => '+15551234567',
             'connected_at' => now(),
+            'metadata' => ['cloud_api_registered_at' => now()->toIso8601String()],
         ]);
 
         WebhookEndpoint::query()->create([

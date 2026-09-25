@@ -79,6 +79,18 @@ class SendOutboundMessageJob implements ShouldQueue
                 'provider_code' => $providerCode !== '' ? $providerCode : null,
             ]);
 
+            $isNotRegistered = $providerCode === '133010' || $providerCode === 133010;
+
+            if ($isNotRegistered) {
+                $detail = 'The connected WhatsApp number is not registered on the WhatsApp Business Platform. '
+                    .'Complete WhatsApp number registration in the dashboard (6-digit two-step verification PIN), then retry. '
+                    .'Meta error 133010: '.trim($providerMessage);
+
+                $this->markFailed($message, 'whatsapp_number_not_registered', substr($detail, 0, 2000));
+
+                return;
+            }
+
             $detail = trim($providerMessage);
             if ($providerCode !== '') {
                 $detail = 'Meta error '.$providerCode.': '.$detail;

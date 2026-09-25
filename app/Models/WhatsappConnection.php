@@ -36,6 +36,15 @@ class WhatsappConnection extends Model
             if ($phoneId === null || $phoneId === '') {
                 $connection->connection_status = ConnectionStatus::Pending;
                 $connection->connected_at = null;
+
+                return;
+            }
+
+            $registeredAt = data_get($connection->metadata, 'cloud_api_registered_at');
+
+            if (! is_string($registeredAt) || $registeredAt === '') {
+                $connection->connection_status = ConnectionStatus::Pending;
+                $connection->connected_at = null;
             }
         });
     }

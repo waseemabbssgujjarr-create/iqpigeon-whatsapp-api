@@ -132,6 +132,45 @@ class MessageOutboundTest extends TestCase
         });
     }
 
+    public function test_outbound_job_maps_meta_133010_to_whatsapp_number_not_registered(): void
+    {
+        ['partner' => $partner] = $this->createActivePartnerWithApiKey(['messages.send']);
+        $connection = $this->createActiveWhatsappConnection($partner);
+        $connection->forceFill([
+            'metadata' => ['cloud_api_registered_at' => now()->toIso8601String()],
+        ])->save();
+
+        $message = Message::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'whatsapp_connection_id' => $connection->id,
+            'direction' => 'outbound',
+            'status' => MessageStatus::Queued,
+            'from_number' => $connection->display_phone_number,
+            'to_number' => '923004522663',
+            'message_type' => 'text',
+            'body' => 'Registration test',
+        ]);
+
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([
+                'error' => [
+                    'message' => '(#133010) Account not registered',
+                    'type' => 'OAuthException',
+                    'code' => 133010,
+                ],
+            ], 400),
+        ]);
+
+        (new SendOutboundMessageJob($message->id))->handle(app(\App\Services\Meta\MetaClient::class));
+
+        $message->refresh();
+        $this->assertSame(MessageStatus::Failed, $message->status);
+        $this->assertSame('whatsapp_number_not_registered', $message->failure_code);
+        $this->assertStringContainsString('133010', (string) $message->failure_message);
+        $this->assertStringContainsString('not registered', (string) $message->failure_message);
+    }
+
     public function test_outbound_job_marks_message_failed_on_graph_failure_with_safe_detail(): void
     {
         ['partner' => $partner] = $this->createActivePartnerWithApiKey(['messages.send']);
@@ -210,6 +249,57 @@ class MessageOutboundTest extends TestCase
         $this->assertSame('missing_phone_number_id', $message->failure_code);
     }
 
+    public function test_post_message_queues_when_connection_is_registered_for_cloud_api(): void
+    {
+        Bus::fake([SendOutboundMessageJob::class]);
+
+        ['partner' => $partner, 'secret' => $secret] = $this->createActivePartnerWithApiKey(['messages.send']);
+        $connection = $this->createActiveWhatsappConnection($partner);
+
+        $this->assertNotNull(data_get($connection->metadata, 'cloud_api_registered_at'));
+
+        $this->postJson('/api/v1/messages', [
+            'connection_id' => $connection->uuid,
+            'to' => '923004522663',
+            'type' => 'text',
+            'body' => 'Registered send',
+        ], array_merge($this->withBearer($secret), [
+            'Idempotency-Key' => 'msg-reg-'.uniqid(),
+        ]))->assertAccepted();
+
+        Bus::assertDispatched(SendOutboundMessageJob::class);
+    }
+
+    public function test_post_message_rejects_connection_without_cloud_api_registration(): void
+    {
+        ['partner' => $partner, 'secret' => $secret] = $this->createActivePartnerWithApiKey(['messages.send']);
+        $connection = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'external_ref' => 'unregistered',
+            'phone_number_id' => '1259226987283813',
+            'connection_status' => ConnectionStatus::Active,
+            'connected_at' => now(),
+        ]);
+
+        WhatsappConnectionCredential::query()->create([
+            'whatsapp_connection_id' => $connection->id,
+            'access_token' => 'encrypted-test-token',
+            'phone_number_id' => '1259226987283813',
+        ]);
+
+        $this->postJson('/api/v1/messages', [
+            'connection_id' => $connection->uuid,
+            'to' => '923004522663',
+            'type' => 'text',
+            'body' => 'Should not queue',
+        ], array_merge($this->withBearer($secret), [
+            'Idempotency-Key' => 'msg-unreg-'.uniqid(),
+        ]))->assertStatus(422);
+
+        $this->assertSame(0, Message::query()->count());
+    }
+
     public function test_post_message_rejects_fake_active_connection_without_phone_number_id(): void
     {
         ['partner' => $partner, 'secret' => $secret] = $this->createActivePartnerWithApiKey(['messages.send']);
@@ -249,6 +339,7 @@ class MessageOutboundTest extends TestCase
             'display_phone_number' => '+15559998888',
             'connection_status' => ConnectionStatus::Active,
             'connected_at' => now(),
+            'metadata' => ['cloud_api_registered_at' => now()->toIso8601String()],
         ]);
 
         WhatsappConnectionCredential::query()->create([

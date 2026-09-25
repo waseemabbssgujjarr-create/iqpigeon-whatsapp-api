@@ -64,8 +64,9 @@ class MetaEmbeddedSignupHydrationTest extends TestCase
         $session = app(MetaEmbeddedSignupService::class)->completeCallback('auth-code', $rawToken);
 
         $connection = $session->whatsappConnection->fresh();
-        $this->assertSame(ConnectionStatus::Active, $connection->connection_status);
+        $this->assertSame(ConnectionStatus::Pending, $connection->connection_status);
         $this->assertSame('106540352242922', $connection->phone_number_id);
+        $this->assertTrue(data_get($connection->metadata, 'cloud_api_registration_required'));
         $this->assertSame('waba_123', $connection->waba_id);
 
         $credential = WhatsappConnectionCredential::query()->where('whatsapp_connection_id', $connection->id)->first();

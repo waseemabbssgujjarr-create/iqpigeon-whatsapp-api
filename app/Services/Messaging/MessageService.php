@@ -8,6 +8,7 @@ use App\Jobs\SendOutboundMessageJob;
 use App\Models\Message;
 use App\Models\Partner;
 use App\Models\WhatsappConnection;
+use App\Services\Meta\WhatsappCloudApiRegistrationService;
 use App\Services\Meta\WhatsappConnectionHydrator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,7 @@ class MessageService
 {
     public function __construct(
         private readonly WhatsappConnectionHydrator $hydrator,
+        private readonly WhatsappCloudApiRegistrationService $registration,
     ) {}
 
     /**
@@ -41,6 +43,12 @@ class MessageService
         if ($connection->connection_status !== ConnectionStatus::Active) {
             throw ValidationException::withMessages([
                 'connection_id' => ['WhatsApp connection is not active.'],
+            ]);
+        }
+
+        if (! $this->registration->isRegisteredForSending($connection)) {
+            throw ValidationException::withMessages([
+                'connection_id' => ['WhatsApp number is not registered for Cloud API sending. Complete registration in the IQPigeon dashboard.'],
             ]);
         }
 

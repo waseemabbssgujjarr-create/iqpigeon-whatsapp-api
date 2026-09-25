@@ -6,6 +6,7 @@ use App\Enums\ConnectionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\WhatsappConnection;
 use App\Services\ConnectionOnboardingService;
+use App\Services\Meta\WhatsappCloudApiRegistrationService;
 use App\Services\Meta\WhatsappConnectionHydrator;
 use App\Support\PartnerResolver;
 use Illuminate\Http\RedirectResponse;
@@ -16,12 +17,12 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class ConnectionController extends Controller
 {
-    public function index(Request $request, WhatsappConnectionHydrator $hydrator): Response
+    public function index(Request $request, WhatsappConnectionHydrator $hydrator, WhatsappCloudApiRegistrationService $registration): Response
     {
         $partner = PartnerResolver::fromUser($request->user());
 
         $connections = $partner
-            ? $partner->whatsappConnections()->with('credentials')->orderByDesc('id')->get()->map(function ($c) use ($hydrator) {
+            ? $partner->whatsappConnections()->with('credentials')->orderByDesc('id')->get()->map(function ($c) use ($hydrator, $registration) {
                 $hydrator->reconcileOperationalStatus($c);
                 $c->refresh();
                 $pendingSession = $c->embeddedSignupSessions()
@@ -33,13 +34,16 @@ class ConnectionController extends Controller
                 $status = $c->connection_status->value;
                 $hasCredentials = $c->credentials !== null;
                 $missingPhone = $c->phone_number_id === null || $c->phone_number_id === '';
+                $needsRegistration = ! $missingPhone && $hasCredentials && ! $registration->isRegisteredForSending($c);
 
                 $setupHint = match ($status) {
-                    'pending' => $missingPhone && $hasCredentials
-                        ? 'Meta authorized this connection but your phone number ID was not saved. Sync from Meta or remove and reconnect.'
-                        : ($pendingSession
-                            ? 'Meta signup started — finish connecting your number or remove this draft.'
-                            : 'Setup window expired. Remove this draft and connect again.'),
+                    'pending' => $needsRegistration
+                        ? 'Enter your WhatsApp Business two-step verification PIN to register this number for Cloud API sending.'
+                        : ($missingPhone && $hasCredentials
+                            ? 'Meta authorized this connection but your phone number ID was not saved. Sync from Meta or remove and reconnect.'
+                            : ($pendingSession
+                                ? 'Meta signup started — finish connecting your number or remove this draft.'
+                                : 'Setup window expired. Remove this draft and connect again.')),
                     'error' => 'Connection failed during Meta signup. Try again or remove this entry.',
                     'disconnected', 'revoked' => 'This number is no longer connected.',
                     default => null,
@@ -57,6 +61,8 @@ class ConnectionController extends Controller
                     'created_at' => $c->created_at?->toIso8601String(),
                     'can_resume_setup' => $status === 'pending' && $pendingSession !== null,
                     'can_sync_from_meta' => $status === 'pending' && $hasCredentials && $missingPhone,
+                    'can_register_cloud_api' => $status === 'pending' && $needsRegistration,
+                    'meta_linked_awaiting_registration' => $status === 'pending' && $needsRegistration,
                     'setup_hint' => $setupHint,
                 ];
             })
@@ -115,6 +121,35 @@ class ConnectionController extends Controller
         }
 
         return redirect()->away($onboardingUrl);
+    }
+
+    public function registerCloudApi(
+        Request $request,
+        string $uuid,
+        WhatsappCloudApiRegistrationService $registration,
+    ): RedirectResponse {
+        $partner = PartnerResolver::fromUser($request->user());
+        abort_if($partner === null || $partner->owner_user_id !== $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'pin' => ['required', 'string', 'regex:/^\d{6}$/'],
+        ]);
+
+        $connection = WhatsappConnection::query()
+            ->where('partner_id', $partner->id)
+            ->where('uuid', $uuid)
+            ->with('credentials')
+            ->firstOrFail();
+
+        $result = $registration->registerWithPin($connection, $validated['pin']);
+
+        if ($result['ok']) {
+            return redirect()->route('app.connections')->with('status', 'WhatsApp number registered for Cloud API sending.');
+        }
+
+        return redirect()
+            ->route('app.connections')
+            ->withErrors(['connect' => $result['error'] ?? 'Registration failed.']);
     }
 
     public function rehydrate(Request $request, string $uuid, WhatsappConnectionHydrator $hydrator): RedirectResponse

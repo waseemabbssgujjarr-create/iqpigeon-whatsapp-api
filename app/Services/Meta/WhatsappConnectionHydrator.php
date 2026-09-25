@@ -11,6 +11,7 @@ class WhatsappConnectionHydrator
 {
     public function __construct(
         private readonly MetaClient $metaClient,
+        private readonly WhatsappCloudApiRegistrationService $registration,
     ) {}
 
     /**
@@ -124,22 +125,19 @@ class WhatsappConnectionHydrator
             return true;
         }
 
+        if ($this->registration->reconcileRegistrationStatus($connection)) {
+            return true;
+        }
+
         return false;
     }
 
     /**
-     * Set Active only when phone_number_id is present; otherwise Pending.
+     * Pending until phone_number_id exists and Meta Cloud API register has succeeded.
      */
     public function applyOperationalStatusAfterHydration(WhatsappConnection $connection): void
     {
-        $connection->refresh();
-
-        $hasPhone = $this->normalizedPhoneId($connection->phone_number_id) !== null;
-
-        $connection->forceFill([
-            'connection_status' => $hasPhone ? ConnectionStatus::Active : ConnectionStatus::Pending,
-            'connected_at' => $hasPhone ? ($connection->connected_at ?? now()) : null,
-        ])->save();
+        $this->registration->applyOperationalStatusAfterHydration($connection);
     }
 
     /**

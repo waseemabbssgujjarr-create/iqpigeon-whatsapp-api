@@ -5,6 +5,7 @@ import AppLayout from '../../Layouts/AppLayout';
 const statusLabel = {
     active: { text: 'Connected', className: 'text-emerald-400' },
     pending: { text: 'Setup in progress', className: 'text-amber-400' },
+    meta_linked: { text: 'Meta linked — one step left', className: 'text-amber-300' },
     error: { text: 'Needs attention', className: 'text-red-400' },
     disconnected: { text: 'Removed', className: 'text-slate-500' },
     revoked: { text: 'Revoked', className: 'text-slate-500' },
@@ -19,9 +20,11 @@ function formatWhen(iso) {
 }
 
 export default function Connections({ connections, canConnect }) {
-    const { errors } = usePage().props;
+    const { errors, flash } = usePage().props;
+    const statusMessage = typeof flash?.status === 'string' ? flash.status : null;
     const connectError = typeof errors?.connect === 'string' ? errors.connect : null;
     const [pendingAction, setPendingAction] = useState(null);
+    const [registrationPin, setRegistrationPin] = useState({});
 
     const active = connections?.filter((c) => c.connection_status === 'active') ?? [];
     const drafts = connections?.filter((c) => ['pending', 'error'].includes(c.connection_status)) ?? [];
@@ -47,8 +50,13 @@ export default function Connections({ connections, canConnect }) {
                 account.
             </p>
 
-            {(connectError || isBusy) && (
+            {(connectError || statusMessage || isBusy) && (
                 <div className="mb-6 space-y-3">
+                    {statusMessage && (
+                        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                            {statusMessage}
+                        </div>
+                    )}
                     {connectError && (
                         <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
                             <p className="font-medium">We couldn&apos;t start WhatsApp setup.</p>
@@ -120,7 +128,10 @@ export default function Connections({ connections, canConnect }) {
                     <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">Incomplete setup</h2>
                     <div className="space-y-3">
                         {drafts.map((c) => {
-                            const st = statusLabel[c.connection_status] ?? statusLabel.pending;
+                            const awaitingRegistration = c.meta_linked_awaiting_registration === true;
+                            const st = awaitingRegistration
+                                ? statusLabel.meta_linked
+                                : (statusLabel[c.connection_status] ?? statusLabel.pending);
                             const continueKey = `continue-${c.uuid}`;
 
                             return (
@@ -131,15 +142,93 @@ export default function Connections({ connections, canConnect }) {
                                                 {c.display_phone_number ?? `Draft started ${formatWhen(c.created_at)}`}
                                             </p>
                                             <p className={`mt-1 text-sm ${st.className}`}>{st.text}</p>
-                                            {c.connection_status === 'pending' && !c.can_resume_setup && (
+                                            {awaitingRegistration && (
+                                                <div className="mt-3 space-y-1 text-sm text-slate-300">
+                                                    <p>
+                                                        Meta authorized this WhatsApp Business number. Register it for Cloud API
+                                                        sending with your 6-digit WhatsApp Business two-step verification PIN.
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">
+                                                        Use your existing PIN if two-step verification is already enabled, or choose a
+                                                        new 6-digit PIN to establish it for this number. IQPigeon does not store your
+                                                        PIN.
+                                                    </p>
+                                                    {c.waba_id && (
+                                                        <p className="font-mono text-xs text-slate-500">WABA {c.waba_id}</p>
+                                                    )}
+                                                    {c.phone_number_id && (
+                                                        <p className="font-mono text-xs text-slate-500">
+                                                            Phone number ID {c.phone_number_id}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {c.connection_status === 'pending' && !c.can_resume_setup && !awaitingRegistration && (
                                                 <p className="mt-2 text-sm text-amber-300">Setup expired. Start a new connection.</p>
                                             )}
-                                            {c.setup_hint && (c.can_resume_setup || c.can_sync_from_meta) && (
+                                            {c.setup_hint &&
+                                                (c.can_resume_setup || c.can_sync_from_meta || c.can_register_cloud_api) && (
                                                 <p className="mt-2 text-sm text-slate-400">{c.setup_hint}</p>
                                             )}
                                             <p className="mt-2 text-xs text-slate-500">Last updated {formatWhen(c.updated_at)}</p>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
+                                            {c.can_register_cloud_api && (
+                                                <form
+                                                    className="flex flex-wrap items-end gap-2"
+                                                    onSubmit={(e) => {
+                                                        e.preventDefault();
+                                                        if (isBusy) {
+                                                            return;
+                                                        }
+                                                        const pin = registrationPin[c.uuid] ?? '';
+                                                        setPendingAction(`register-${c.uuid}`);
+                                                        router.post(
+                                                            `/app/connections/${c.uuid}/register`,
+                                                            { pin },
+                                                            {
+                                                                onFinish: () => {
+                                                                    setPendingAction(null);
+                                                                    setRegistrationPin((prev) => {
+                                                                        const next = { ...prev };
+                                                                        delete next[c.uuid];
+                                                                        return next;
+                                                                    });
+                                                                },
+                                                            },
+                                                        );
+                                                    }}
+                                                >
+                                                    <label className="text-xs text-slate-400">
+                                                        WhatsApp Business 2-step PIN (6 digits)
+                                                        <input
+                                                            type="password"
+                                                            inputMode="numeric"
+                                                            autoComplete="off"
+                                                            maxLength={6}
+                                                            pattern="\d{6}"
+                                                            required
+                                                            value={registrationPin[c.uuid] ?? ''}
+                                                            onChange={(e) =>
+                                                                setRegistrationPin((prev) => ({
+                                                                    ...prev,
+                                                                    [c.uuid]: e.target.value.replace(/\D/g, '').slice(0, 6),
+                                                                }))
+                                                            }
+                                                            className="mt-1 block w-32 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 font-mono text-sm text-white"
+                                                        />
+                                                    </label>
+                                                    <button
+                                                        type="submit"
+                                                        disabled={isBusy}
+                                                        className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        {pendingAction === `register-${c.uuid}`
+                                                            ? 'Registering…'
+                                                            : 'Register for sending'}
+                                                    </button>
+                                                </form>
+                                            )}
                                             {c.can_sync_from_meta && (
                                                 <button
                                                     type="button"

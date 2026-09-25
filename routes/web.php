@@ -79,6 +79,7 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::post('/connections/start', [ConnectionController::class, 'start'])->name('connections.start');
     Route::post('/connections/{uuid}/continue', [ConnectionController::class, 'continueSetup'])->name('connections.continue');
     Route::post('/connections/{uuid}/rehydrate', [ConnectionController::class, 'rehydrate'])->name('connections.rehydrate');
+    Route::post('/connections/{uuid}/register', [ConnectionController::class, 'registerCloudApi'])->name('connections.register');
     Route::delete('/connections/{uuid}', [ConnectionController::class, 'destroy'])->name('connections.destroy');
     Route::redirect('/build', '/app/build/getting-started')->name('build.index');
     Route::get('/build/getting-started', [BuildCrmController::class, 'gettingStarted'])->name('build.getting-started');
