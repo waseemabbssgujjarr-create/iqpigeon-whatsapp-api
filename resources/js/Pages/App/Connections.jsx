@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
+import { launchCoexistenceEmbeddedSignup } from '../../lib/metaEmbeddedSignup';
 
 const statusLabel = {
     active: { text: 'Connected', className: 'text-emerald-400' },
@@ -20,7 +21,7 @@ function formatWhen(iso) {
 }
 
 export default function Connections({ connections, canConnect }) {
-    const { errors, flash } = usePage().props;
+    const { errors, flash, metaEmbeddedSignup } = usePage().props;
     const statusMessage = typeof flash?.status === 'string' ? flash.status : null;
     const connectError = typeof errors?.connect === 'string' ? errors.connect : null;
     const [pendingAction, setPendingAction] = useState(null);
@@ -31,6 +32,49 @@ export default function Connections({ connections, canConnect }) {
     const inactive = connections?.filter((c) => ['disconnected', 'revoked'].includes(c.connection_status)) ?? [];
 
     const isBusy = pendingAction !== null;
+
+    useEffect(() => {
+        const payload = flash?.coexistence_onboarding;
+        if (!payload?.connection_uuid || !payload?.session_token || !metaEmbeddedSignup?.app_id) {
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            setPendingAction('coexistence-sdk');
+            try {
+                const { code, embeddedEvent } = await launchCoexistenceEmbeddedSignup({
+                    appId: metaEmbeddedSignup.app_id,
+                    graphVersion: metaEmbeddedSignup.graph_version,
+                    configId: metaEmbeddedSignup.config_id_coexistence,
+                });
+
+                if (cancelled) {
+                    return;
+                }
+
+                router.post(
+                    `/app/connections/${payload.connection_uuid}/embedded-signup/complete`,
+                    {
+                        code,
+                        session_token: payload.session_token,
+                        embedded_signup_event: embeddedEvent ?? null,
+                    },
+                    { onFinish: () => setPendingAction(null) },
+                );
+            } catch (error) {
+                if (!cancelled) {
+                    setPendingAction(null);
+                    router.reload({ only: ['flash', 'errors'] });
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [flash?.coexistence_onboarding, metaEmbeddedSignup?.app_id]);
 
     const postOnboarding = (url, actionKey) => {
         if (isBusy) {
@@ -45,10 +89,24 @@ export default function Connections({ connections, canConnect }) {
 
     return (
         <AppLayout title="Connect WhatsApp">
-            <p className="-mt-4 mb-8 max-w-2xl text-sm text-slate-400">
+            <p className="-mt-4 mb-4 max-w-2xl text-sm text-slate-400">
                 Link a WhatsApp Business number through Meta. Your CRM sends messages through IQPigeon — Meta bills messaging on your Meta
                 account.
             </p>
+            <div className="mb-8 max-w-3xl rounded-xl border border-slate-700 bg-slate-900/40 p-4 text-sm text-slate-300">
+                <p className="font-medium text-white">Two supported paths</p>
+                <ul className="mt-2 list-inside list-disc space-y-1 text-slate-400">
+                    <li>
+                        <strong className="text-slate-200">Existing WhatsApp Business app number (Coexistence)</strong> — keep using the
+                        mobile app where Meta marks the number eligible. If Meta shows a number as <em>Ineligible</em>, that decision comes
+                        from Meta (region, account type, display name, or policy) — not because IQPigeon blocked it.
+                    </li>
+                    <li>
+                        <strong className="text-slate-200">New number / standard Cloud API</strong> — add or register a number for API-only
+                        sending (includes Meta test 555 numbers).
+                    </li>
+                </ul>
+            </div>
 
             {(connectError || statusMessage || isBusy) && (
                 <div className="mb-6 space-y-3">
@@ -76,18 +134,32 @@ export default function Connections({ connections, canConnect }) {
 
             {canConnect && (
                 <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-violet-500/30 bg-violet-500/5 p-6">
-                    <div>
+                    <div className="max-w-xl">
                         <h2 className="font-semibold text-white">Connect a WhatsApp Business number</h2>
-                        <p className="mt-1 text-sm text-slate-400">Opens Meta signup to link your phone number.</p>
+                        <p className="mt-1 text-sm text-slate-400">
+                            Choose coexistence for an existing Business app line, or standard setup for a new Cloud API number.
+                        </p>
                     </div>
-                    <button
-                        type="button"
-                        disabled={isBusy}
-                        onClick={() => postOnboarding('/app/connections/start', 'start')}
-                        className="rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {pendingAction === 'start' ? 'Opening secure Meta signup…' : '+ Connect another WhatsApp number'}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => postOnboarding('/app/connections/start-coexistence', 'coexistence')}
+                            className="rounded-lg border border-violet-400/50 bg-slate-950 px-5 py-2.5 text-sm font-semibold text-violet-100 hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {pendingAction === 'coexistence' || pendingAction === 'coexistence-sdk'
+                                ? 'Opening Meta (Business app)…'
+                                : 'Connect existing Business app number'}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => postOnboarding('/app/connections/start', 'start')}
+                            className="rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {pendingAction === 'start' ? 'Opening secure Meta signup…' : 'Set up new Cloud API number'}
+                        </button>
+                    </div>
                 </div>
             )}
 

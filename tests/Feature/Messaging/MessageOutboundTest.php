@@ -5,6 +5,7 @@ namespace Tests\Feature\Messaging;
 use App\Enums\ConnectionStatus;
 use App\Enums\MessageStatus;
 use App\Jobs\SendOutboundMessageJob;
+use App\Services\Meta\MetaGraphErrorMapper;
 use App\Models\Message;
 use App\Models\Partner;
 use App\Models\WhatsappConnection;
@@ -61,7 +62,7 @@ class MessageOutboundTest extends TestCase
             'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.test123']]], 200),
         ]);
 
-        (new SendOutboundMessageJob($message->id))->handle(app(\App\Services\Meta\MetaClient::class));
+        $this->runOutboundJob($message);
 
         $message->refresh();
         $this->assertSame(MessageStatus::Sent, $message->status);
@@ -90,7 +91,7 @@ class MessageOutboundTest extends TestCase
             'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.e164fix']]], 200),
         ]);
 
-        (new SendOutboundMessageJob($message->id))->handle(app(\App\Services\Meta\MetaClient::class));
+        $this->runOutboundJob($message);
 
         Http::assertSent(function ($request) {
             $body = $request->data();
@@ -125,7 +126,7 @@ class MessageOutboundTest extends TestCase
             'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.path']]], 200),
         ]);
 
-        (new SendOutboundMessageJob($message->id))->handle(app(\App\Services\Meta\MetaClient::class));
+        $this->runOutboundJob($message);
 
         Http::assertSent(function ($request) {
             return str_contains($request->url(), '/phone_999/messages');
@@ -162,13 +163,13 @@ class MessageOutboundTest extends TestCase
             ], 400),
         ]);
 
-        (new SendOutboundMessageJob($message->id))->handle(app(\App\Services\Meta\MetaClient::class));
+        $this->runOutboundJob($message);
 
         $message->refresh();
         $this->assertSame(MessageStatus::Failed, $message->status);
         $this->assertSame('whatsapp_number_not_registered', $message->failure_code);
-        $this->assertStringContainsString('133010', (string) $message->failure_message);
-        $this->assertStringContainsString('not registered', (string) $message->failure_message);
+        $this->assertStringContainsString('not registered', strtolower((string) $message->failure_message));
+        $this->assertStringContainsString('PIN', (string) $message->failure_message);
     }
 
     public function test_outbound_job_marks_message_failed_on_graph_failure_with_safe_detail(): void
@@ -198,13 +199,50 @@ class MessageOutboundTest extends TestCase
             ], 400),
         ]);
 
-        (new SendOutboundMessageJob($message->id))->handle(app(\App\Services\Meta\MetaClient::class));
+        $this->runOutboundJob($message);
 
         $message->refresh();
         $this->assertSame(MessageStatus::Failed, $message->status);
-        $this->assertSame('graph_request_failed', $message->failure_code);
-        $this->assertStringContainsString('HTTP 400', (string) $message->failure_message);
+        $this->assertSame('invalid_parameter', $message->failure_code);
         $this->assertStringContainsString('Meta error 100', (string) $message->failure_message);
+        $this->assertNull($message->wa_message_id);
+    }
+
+    public function test_outbound_job_maps_meta_131037_to_display_name_not_approved(): void
+    {
+        ['partner' => $partner] = $this->createActivePartnerWithApiKey(['messages.send']);
+        $connection = $this->createActiveWhatsappConnection($partner);
+        $connection->forceFill([
+            'metadata' => ['cloud_api_registered_at' => now()->toIso8601String()],
+        ])->save();
+
+        $message = Message::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'whatsapp_connection_id' => $connection->id,
+            'direction' => 'outbound',
+            'status' => MessageStatus::Queued,
+            'from_number' => $connection->display_phone_number,
+            'to_number' => '923004522663',
+            'message_type' => 'template',
+            'payload' => ['name' => 'hello_world', 'language' => ['code' => 'en_US']],
+        ]);
+
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([
+                'error' => [
+                    'message' => 'WhatsApp provided number needs display name approval before message can be sent.',
+                    'type' => 'OAuthException',
+                    'code' => 131037,
+                ],
+            ], 400),
+        ]);
+
+        $this->runOutboundJob($message);
+
+        $message->refresh();
+        $this->assertSame(MessageStatus::Failed, $message->status);
+        $this->assertSame('display_name_not_approved', $message->failure_code);
         $this->assertNull($message->wa_message_id);
     }
 
@@ -240,7 +278,7 @@ class MessageOutboundTest extends TestCase
 
         Http::fake();
 
-        (new SendOutboundMessageJob($message->id))->handle(app(\App\Services\Meta\MetaClient::class));
+        $this->runOutboundJob($message);
 
         Http::assertNothingSent();
 
@@ -327,6 +365,14 @@ class MessageOutboundTest extends TestCase
         ]))->assertStatus(422);
 
         $this->assertSame(0, Message::query()->count());
+    }
+
+    private function runOutboundJob(Message $message): void
+    {
+        (new SendOutboundMessageJob($message->id))->handle(
+            app(\App\Services\Meta\MetaClient::class),
+            app(MetaGraphErrorMapper::class),
+        );
     }
 
     private function createActiveWhatsappConnection(Partner $partner): WhatsappConnection

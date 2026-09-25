@@ -77,6 +77,8 @@ Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(func
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::get('/connections', [ConnectionController::class, 'index'])->name('connections');
     Route::post('/connections/start', [ConnectionController::class, 'start'])->name('connections.start');
+    Route::post('/connections/start-coexistence', [ConnectionController::class, 'startCoexistence'])->name('connections.start-coexistence');
+    Route::post('/connections/{uuid}/embedded-signup/complete', [ConnectionController::class, 'completeEmbeddedSignup'])->name('connections.embedded-signup.complete');
     Route::post('/connections/{uuid}/continue', [ConnectionController::class, 'continueSetup'])->name('connections.continue');
     Route::post('/connections/{uuid}/rehydrate', [ConnectionController::class, 'rehydrate'])->name('connections.rehydrate');
     Route::post('/connections/{uuid}/register', [ConnectionController::class, 'registerCloudApi'])->name('connections.register');

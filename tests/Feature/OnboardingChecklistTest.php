@@ -59,8 +59,12 @@ class OnboardingChecklistTest extends TestCase
         WhatsappConnection::query()->create([
             'uuid' => (string) \Illuminate\Support\Str::uuid(),
             'partner_id' => $partner->id,
+            'phone_number_id' => 'phone_checklist_1',
             'connection_status' => ConnectionStatus::Active,
             'connected_at' => now(),
+            'metadata' => [
+                'cloud_api_registered_at' => now()->toIso8601String(),
+            ],
         ]);
 
         WebhookEndpoint::query()->create([

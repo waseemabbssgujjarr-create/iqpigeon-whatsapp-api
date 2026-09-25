@@ -58,6 +58,19 @@ class MetaClient
 
     public function embeddedSignupConfigId(): string
     {
+        return $this->embeddedSignupConfigIdForFlow(MetaEmbeddedSignupService::FLOW_STANDARD);
+    }
+
+    public function embeddedSignupConfigIdForFlow(string $flow): string
+    {
+        if ($flow === MetaEmbeddedSignupService::FLOW_COEXISTENCE) {
+            $coexistence = (string) config('services.meta.es_config_id_coexistence', '');
+
+            if ($coexistence !== '') {
+                return $coexistence;
+            }
+        }
+
         return (string) config('services.meta.es_config_id', '');
     }
 

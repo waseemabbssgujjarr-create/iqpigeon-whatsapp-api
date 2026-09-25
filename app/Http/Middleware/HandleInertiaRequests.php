@@ -47,6 +47,13 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
                 'verified' => fn () => $request->query('verified') === '1',
+                'coexistence_onboarding' => fn () => $request->session()->get('coexistence_onboarding'),
+            ],
+            'metaEmbeddedSignup' => fn () => [
+                'app_id' => (string) config('services.meta.app_id'),
+                'graph_version' => ltrim((string) config('services.meta.graph_version', 'v21.0'), '/'),
+                'config_id_standard' => (string) config('services.meta.es_config_id'),
+                'config_id_coexistence' => (string) (config('services.meta.es_config_id_coexistence') ?: config('services.meta.es_config_id')),
             ],
             'socialAuth' => fn () => [
                 'google' => (string) config('services.google.client_id') !== ''

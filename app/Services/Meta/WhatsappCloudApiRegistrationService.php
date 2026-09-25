@@ -16,6 +16,7 @@ class WhatsappCloudApiRegistrationService
 {
     public function __construct(
         private readonly MetaClient $metaClient,
+        private readonly MetaGraphErrorMapper $errorMapper,
     ) {}
 
     public function isRegisteredForSending(WhatsappConnection $connection): bool
@@ -54,18 +55,24 @@ class WhatsappCloudApiRegistrationService
         );
 
         if ($response->failed()) {
-            $code = (string) data_get($response->json(), 'error.code', '');
-            $message = (string) data_get($response->json(), 'error.message', 'Registration failed.');
+            $mapped = $this->errorMapper->mapRegistrationFailure($response->status(), $response->json());
 
             Log::warning('meta.phone.register_failed', [
                 'connection_id' => $connection->id,
                 'http_status' => $response->status(),
-                'provider_code' => $code !== '' ? $code : null,
+                'provider_code' => $mapped['provider_code'],
             ]);
+
+            if ($mapped['failure_code'] === 'already_registered') {
+                $this->markRegistered($connection, confirmedVia: 'meta_register_already');
+                $this->refreshPhoneSnapshot($connection, $accessToken, (string) $phoneNumberId);
+
+                return ['ok' => true];
+            }
 
             return [
                 'ok' => false,
-                'error' => $code !== '' ? 'Meta error '.$code.': '.$message : $message,
+                'error' => $mapped['failure_message'],
             ];
         }
 
@@ -138,7 +145,36 @@ class WhatsappCloudApiRegistrationService
             return;
         }
 
+        if ($this->shouldSkipPinRegistrationForCoexistence($connection)) {
+            $this->markRegistered($connection, confirmedVia: 'coexistence_onboarding');
+            $connection->loadMissing('credentials');
+            $token = $connection->credentials?->access_token;
+            if (is_string($token) && $token !== '') {
+                $this->refreshPhoneSnapshot($connection, $token, $connection->phone_number_id);
+            }
+
+            return;
+        }
+
         $this->markRegistrationRequired($connection);
+    }
+
+    /**
+     * Coexistence (WhatsApp Business App onboarding) numbers may not require PIN /register when Meta already linked Cloud API.
+     */
+    public function shouldSkipPinRegistrationForCoexistence(WhatsappConnection $connection): bool
+    {
+        $metadata = is_array($connection->metadata) ? $connection->metadata : [];
+        $onboarding = (string) ($metadata['onboarding_source'] ?? '');
+
+        if (! in_array($onboarding, ['coexistence', 'whatsapp_business_app_onboarding'], true)) {
+            return false;
+        }
+
+        $snapshot = is_array($metadata['meta_phone_snapshot'] ?? null) ? $metadata['meta_phone_snapshot'] : [];
+        $verification = strtoupper((string) ($snapshot['code_verification_status'] ?? ''));
+
+        return $verification === 'VERIFIED';
     }
 
     /**

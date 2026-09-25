@@ -6,6 +6,7 @@ use App\Enums\MessageStatus;
 use App\Models\Message;
 use App\Models\WhatsappConnectionCredential;
 use App\Services\Meta\MetaClient;
+use App\Services\Meta\MetaGraphErrorMapper;
 use App\Support\WhatsAppRecipient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -19,7 +20,7 @@ class SendOutboundMessageJob implements ShouldQueue
         public int $messageId,
     ) {}
 
-    public function handle(MetaClient $metaClient): void
+    public function handle(MetaClient $metaClient, MetaGraphErrorMapper $errorMapper): void
     {
         $message = Message::query()->with('whatsappConnection.credentials')->find($this->messageId);
 
@@ -30,6 +31,8 @@ class SendOutboundMessageJob implements ShouldQueue
         if ($message->status !== MessageStatus::Queued) {
             return;
         }
+
+        $message->forceFill(['status' => MessageStatus::Processing])->save();
 
         $connection = $message->whatsappConnection;
 
@@ -68,36 +71,18 @@ class SendOutboundMessageJob implements ShouldQueue
         );
 
         if ($response->failed()) {
-            $providerCode = (string) data_get($response->json(), 'error.code', '');
-            $providerMessage = (string) data_get($response->json(), 'error.message', 'Meta Graph request failed.');
-            $providerType = (string) data_get($response->json(), 'error.type', '');
+            $mapped = $errorMapper->mapSendFailure($response->status(), $response->json());
 
             Log::warning('message.send_failed', [
                 'message_id' => $message->id,
+                'message_uuid' => $message->uuid,
+                'connection_id' => $connection->id,
                 'http_status' => $response->status(),
-                'provider_type' => $providerType !== '' ? $providerType : null,
-                'provider_code' => $providerCode !== '' ? $providerCode : null,
+                'provider_code' => $mapped['provider_code'],
+                'failure_code' => $mapped['failure_code'],
             ]);
 
-            $isNotRegistered = $providerCode === '133010' || $providerCode === 133010;
-
-            if ($isNotRegistered) {
-                $detail = 'The connected WhatsApp number is not registered on the WhatsApp Business Platform. '
-                    .'Complete WhatsApp number registration in the dashboard (6-digit two-step verification PIN), then retry. '
-                    .'Meta error 133010: '.trim($providerMessage);
-
-                $this->markFailed($message, 'whatsapp_number_not_registered', substr($detail, 0, 2000));
-
-                return;
-            }
-
-            $detail = trim($providerMessage);
-            if ($providerCode !== '') {
-                $detail = 'Meta error '.$providerCode.': '.$detail;
-            }
-            $detail = 'HTTP '.$response->status().'. '.$detail;
-
-            $this->markFailed($message, 'graph_request_failed', substr($detail, 0, 2000));
+            $this->markFailed($message, $mapped['failure_code'], $mapped['failure_message']);
 
             return;
         }

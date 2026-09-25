@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\WhatsappConnection;
 use App\Services\Meta\MetaClient;
+use App\Services\Meta\WhatsappCloudApiRegistrationService;
 use Illuminate\Console\Command;
 
 /**
@@ -15,8 +16,9 @@ class InspectWhatsappConnectionMetaCommand extends Command
 
     protected $description = 'Safe live Meta phone + token scope inspection (no secrets printed).';
 
-    public function handle(MetaClient $metaClient): int
+    public function handle(MetaClient $metaClient, WhatsappCloudApiRegistrationService $registration): int
     {
+        $exit = self::SUCCESS;
         $connection = WhatsappConnection::query()
             ->where('uuid', $this->argument('uuid'))
             ->with('credentials')
@@ -32,6 +34,11 @@ class InspectWhatsappConnectionMetaCommand extends Command
         $this->line('stored_waba_id: '.($connection->waba_id ?? '(null)'));
         $this->line('stored_phone_number_id: '.($connection->phone_number_id ?? '(null)'));
         $this->line('stored_display_phone_number: '.($connection->display_phone_number ?? '(null)'));
+        $this->line('connection_status: '.$connection->connection_status->value);
+        $metadata = is_array($connection->metadata) ? $connection->metadata : [];
+        $this->line('onboarding_source: '.(string) ($metadata['onboarding_source'] ?? '(unknown)'));
+        $this->line('cloud_api_registered_at: '.(string) ($metadata['cloud_api_registered_at'] ?? '(null)'));
+        $this->line('cloud_api_registered: '.($registration->isRegisteredForSending($connection) ? 'yes' : 'no'));
 
         if ($connection->credentials === null) {
             $this->error('No stored Meta credentials.');
@@ -65,6 +72,7 @@ class InspectWhatsappConnectionMetaCommand extends Command
         $this->line('http_status: '.$phoneResponse->status());
 
         if ($phoneResponse->failed()) {
+            $exit = self::FAILURE;
             $this->line('provider_error_code: '.(string) data_get($phoneResponse->json(), 'error.code', ''));
             $this->line('provider_error_message: '.(string) data_get($phoneResponse->json(), 'error.message', ''));
         } else {
@@ -89,7 +97,7 @@ class InspectWhatsappConnectionMetaCommand extends Command
             $this->line('provider_error_code: '.(string) data_get($debugResponse->json(), 'error.code', ''));
             $this->line('provider_error_message: '.(string) data_get($debugResponse->json(), 'error.message', ''));
 
-            return $phoneResponse->successful() ? self::SUCCESS : self::FAILURE;
+            $exit = self::FAILURE;
         }
 
         $data = data_get($debugResponse->json(), 'data', []);
@@ -149,6 +157,22 @@ class InspectWhatsappConnectionMetaCommand extends Command
             $this->line('stored_waba_in_token_targets: '.(in_array($storedWaba, $wabaTargets, true) ? 'yes' : 'no'));
         }
 
-        return $phoneResponse->successful() ? self::SUCCESS : self::FAILURE;
+        if ($expectedAppId !== '' && $tokenAppId !== $expectedAppId) {
+            $exit = self::FAILURE;
+        }
+
+        if (! in_array('whatsapp_business_messaging', $scopeNames, true)) {
+            $exit = self::FAILURE;
+        }
+
+        if ($storedWaba !== '' && ! in_array($storedWaba, $wabaTargets, true)) {
+            $exit = self::FAILURE;
+        }
+
+        if (! $registration->isRegisteredForSending($connection)) {
+            $this->warn('Connection is not marked registered for Cloud API sending (PIN/coexistence step may be pending).');
+        }
+
+        return $exit;
     }
 }

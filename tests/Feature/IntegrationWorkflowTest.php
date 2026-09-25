@@ -87,7 +87,7 @@ class IntegrationWorkflowTest extends TestCase
                 ->component('App/Dashboard')
                 ->has('workflow.steps', 4)
                 ->has('crmIntegration')
-                ->has('integrationHealth.checks', 6)
+                ->has('integrationHealth.checks', 7)
             );
     }
 }

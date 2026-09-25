@@ -9,15 +9,22 @@ use Illuminate\Support\Facades\Log;
 
 class MetaEmbeddedSignupService
 {
+    public const FLOW_STANDARD = 'standard';
+
+    public const FLOW_COEXISTENCE = 'coexistence';
+
     public function __construct(
         private readonly MetaClient $metaClient,
         private readonly ConnectionOnboardingService $onboarding,
         private readonly WhatsappConnectionHydrator $hydrator,
+        private readonly WhatsappConnectionValidator $validator,
+        private readonly WhatsappCloudApiRegistrationService $registration,
     ) {}
 
     public function authorizationUrl(EmbeddedSignupSession $session, string $rawToken): string
     {
-        $configId = $this->metaClient->embeddedSignupConfigId();
+        $flow = $this->resolveSessionFlow($session);
+        $configId = $this->metaClient->embeddedSignupConfigIdForFlow($flow);
         $appId = (string) config('services.meta.app_id');
         $redirectUri = url('/oauth/meta/callback');
 
@@ -34,7 +41,10 @@ class MetaEmbeddedSignupService
         return 'https://www.facebook.com/'.$version.'/dialog/oauth?'.$query;
     }
 
-    public function completeCallback(string $code, string $rawToken): EmbeddedSignupSession
+    /**
+     * @param  array<string, mixed>  $embeddedSignupEvent  Optional WA_EMBEDDED_SIGNUP payload from the JS SDK.
+     */
+    public function completeCallback(string $code, string $rawToken, array $embeddedSignupEvent = []): EmbeddedSignupSession
     {
         $session = $this->onboarding->findSessionByToken($rawToken);
 
@@ -42,6 +52,26 @@ class MetaEmbeddedSignupService
             throw new \RuntimeException('Invalid or expired onboarding session.');
         }
 
+        return $this->finalizeSession($session, $code, $embeddedSignupEvent);
+    }
+
+    /**
+     * @param  array<string, mixed>  $embeddedSignupEvent
+     */
+    public function completeForConnection(EmbeddedSignupSession $session, string $code, array $embeddedSignupEvent = []): EmbeddedSignupSession
+    {
+        if ($session->status !== 'pending' || $session->expires_at <= now()) {
+            throw new \RuntimeException('Onboarding session is not active.');
+        }
+
+        return $this->finalizeSession($session, $code, $embeddedSignupEvent);
+    }
+
+    /**
+     * @param  array<string, mixed>  $embeddedSignupEvent
+     */
+    private function finalizeSession(EmbeddedSignupSession $session, string $code, array $embeddedSignupEvent): EmbeddedSignupSession
+    {
         $redirectUri = url('/oauth/meta/callback');
         $appId = (string) config('services.meta.app_id');
         $appSecret = (string) config('services.meta.app_secret');
@@ -67,6 +97,8 @@ class MetaEmbeddedSignupService
 
         $connection = $session->whatsappConnection;
 
+        $this->persistEmbeddedSignupHints($connection, $embeddedSignupEvent);
+
         WhatsappConnectionCredential::query()->updateOrCreate(
             ['whatsapp_connection_id' => $connection->id],
             [
@@ -84,7 +116,24 @@ class MetaEmbeddedSignupService
             ]);
         }
 
-        $this->hydrator->applyOperationalStatusAfterHydration($connection->fresh());
+        $connection = $connection->fresh();
+        $connection->loadMissing('credentials');
+        if ($connection->credentials !== null) {
+            $this->registration->refreshPhoneSnapshot(
+                $connection,
+                $accessToken,
+                $connection->phone_number_id,
+            );
+        }
+
+        if ($hydrated) {
+            $validation = $this->validator->validate($connection->fresh());
+            $this->validator->applyValidationResult($connection->fresh(), $validation);
+
+            if ($validation['ok'] ?? false) {
+                $this->hydrator->applyOperationalStatusAfterHydration($connection->fresh());
+            }
+        }
 
         $session->forceFill([
             'status' => 'completed',
@@ -92,5 +141,44 @@ class MetaEmbeddedSignupService
         ])->save();
 
         return $session->fresh(['whatsappConnection', 'partner']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    private function persistEmbeddedSignupHints(\App\Models\WhatsappConnection $connection, array $event): void
+    {
+        if ($event === []) {
+            return;
+        }
+
+        $metadata = is_array($connection->metadata) ? $connection->metadata : [];
+        $metadata['embedded_signup_event'] = [
+            'waba_id' => data_get($event, 'data.waba_id') ?? data_get($event, 'waba_id'),
+            'phone_number_id' => data_get($event, 'data.phone_number_id') ?? data_get($event, 'phone_number_id'),
+            'business_id' => data_get($event, 'data.business_id') ?? data_get($event, 'business_id'),
+        ];
+
+        $phoneNumberId = (string) ($metadata['embedded_signup_event']['phone_number_id'] ?? '');
+        $wabaId = (string) ($metadata['embedded_signup_event']['waba_id'] ?? '');
+
+        if ($phoneNumberId !== '') {
+            $connection->forceFill(['phone_number_id' => $phoneNumberId]);
+        }
+
+        if ($wabaId !== '') {
+            $connection->forceFill(['waba_id' => $wabaId]);
+        }
+
+        $connection->forceFill(['metadata' => $metadata])->save();
+    }
+
+    private function resolveSessionFlow(EmbeddedSignupSession $session): string
+    {
+        $connection = $session->whatsappConnection;
+        $metadata = is_array($connection?->metadata) ? $connection->metadata : [];
+        $source = (string) ($metadata['onboarding_source'] ?? self::FLOW_STANDARD);
+
+        return $source === self::FLOW_COEXISTENCE ? self::FLOW_COEXISTENCE : self::FLOW_STANDARD;
     }
 }

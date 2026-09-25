@@ -11,6 +11,21 @@ class StoreMessageRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $template = $this->input('template');
+
+        if (! is_array($template)) {
+            return;
+        }
+
+        if (isset($template['name']) && is_string($template['name'])) {
+            $template['name'] = trim($template['name']);
+        }
+
+        $this->merge(['template' => $template]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -22,6 +37,10 @@ class StoreMessageRequest extends FormRequest
             'type' => ['required', 'string', 'in:text,template,image,document,audio,video'],
             'body' => ['required_if:type,text', 'nullable', 'string', 'max:4096'],
             'template' => ['required_if:type,template', 'nullable', 'array'],
+            'template.name' => ['required_if:type,template', 'string', 'max:512', 'regex:/^[a-z0-9_]+$/'],
+            'template.language' => ['required_if:type,template', 'array'],
+            'template.language.code' => ['required_if:type,template', 'string', 'max:32'],
+            'template.components' => ['nullable', 'array'],
             'payload' => ['nullable', 'array'],
         ];
     }

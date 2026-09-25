@@ -20,8 +20,12 @@ class ConnectionOnboardingService
      * @param  array<string, mixed>  $metadata
      * @return array{connection: WhatsappConnection, session: EmbeddedSignupSession, onboarding_url: string, expires_at: \Illuminate\Support\Carbon}
      */
-    public function startOnboarding(Partner $partner, ?string $externalRef = null, array $metadata = []): array
-    {
+    public function startOnboarding(
+        Partner $partner,
+        ?string $externalRef = null,
+        array $metadata = [],
+        string $onboardingSource = 'standard',
+    ): array {
         if (! $this->entitlements->canAddConnection($partner)) {
             throw new \RuntimeException('Connection limit reached or partner is not operational.');
         }
@@ -30,6 +34,8 @@ class ConnectionOnboardingService
             ? $metadata['return_url']
             : null;
         unset($metadata['return_url']);
+
+        $metadata['onboarding_source'] = $onboardingSource === 'coexistence' ? 'coexistence' : 'standard';
 
         $connection = WhatsappConnection::query()->create([
             'uuid' => (string) Str::uuid(),
@@ -58,6 +64,7 @@ class ConnectionOnboardingService
         return [
             'connection' => $connection,
             'session' => $session,
+            'session_token' => $rawToken,
             'onboarding_url' => $onboardingUrl,
             'expires_at' => $expiresAt,
         ];

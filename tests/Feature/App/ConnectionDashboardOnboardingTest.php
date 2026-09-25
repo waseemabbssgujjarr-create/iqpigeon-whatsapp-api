@@ -131,9 +131,13 @@ class ConnectionDashboardOnboardingTest extends TestCase
         $connection = WhatsappConnection::query()->create([
             'uuid' => (string) Str::uuid(),
             'partner_id' => $partner->id,
+            'phone_number_id' => 'phone_active_1',
             'connection_status' => ConnectionStatus::Active,
             'display_phone_number' => '+15551234567',
             'connected_at' => now(),
+            'metadata' => [
+                'cloud_api_registered_at' => now()->toIso8601String(),
+            ],
         ]);
 
         $response = $this->actingAs($user)

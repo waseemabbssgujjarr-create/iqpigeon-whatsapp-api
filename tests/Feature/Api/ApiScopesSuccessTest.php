@@ -166,6 +166,10 @@ class ApiScopesSuccessTest extends TestCase
             'display_phone_number' => '+15551234567',
             'connection_status' => ConnectionStatus::Active,
             'connected_at' => now(),
+            'metadata' => [
+                'cloud_api_registered_at' => now()->toIso8601String(),
+                'cloud_api_register_confirmed' => true,
+            ],
         ]);
 
         WhatsappConnectionCredential::query()->create([

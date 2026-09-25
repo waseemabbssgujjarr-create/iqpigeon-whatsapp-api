@@ -59,6 +59,7 @@ return [
         'app_id' => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),
         'es_config_id' => env('META_CONFIG_ID', env('META_ES_CONFIG_ID')),
+        'es_config_id_coexistence' => env('META_ES_CONFIG_ID_COEXISTENCE', env('META_CONFIG_ID_COEXISTENCE')),
         'webhook_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
         'graph_version' => env('META_GRAPH_VERSION', 'v21.0'),
         'timeout' => env('META_HTTP_TIMEOUT', 30),

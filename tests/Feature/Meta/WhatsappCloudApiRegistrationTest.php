@@ -59,6 +59,30 @@ class WhatsappCloudApiRegistrationTest extends TestCase
         $this->assertTrue($service->isRegisteredForSending($connection));
     }
 
+    public function test_coexistence_onboarding_skips_pin_when_verified_snapshot_present(): void
+    {
+        $partner = Partner::factory()->create();
+        $connection = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'phone_number_id' => '999111',
+            'connection_status' => ConnectionStatus::Pending,
+            'metadata' => [
+                'onboarding_source' => 'coexistence',
+                'meta_phone_snapshot' => [
+                    'code_verification_status' => 'VERIFIED',
+                    'platform_type' => 'CLOUD_API',
+                ],
+            ],
+        ]);
+
+        app(WhatsappCloudApiRegistrationService::class)->applyOperationalStatusAfterHydration($connection);
+
+        $connection->refresh();
+        $this->assertSame(ConnectionStatus::Active, $connection->connection_status);
+        $this->assertNotNull(data_get($connection->metadata, 'cloud_api_registered_at'));
+    }
+
     public function test_health_outbound_not_ready_without_registration(): void
     {
         $partner = Partner::factory()->create();
@@ -172,12 +196,8 @@ class WhatsappCloudApiRegistrationTest extends TestCase
         ]);
 
         $logEntries = [];
-        Log::listen(function ($level, $message, $context) use (&$logEntries): void {
-            $logEntries[] = [
-                'level' => $level,
-                'message' => $message,
-                'context' => $context,
-            ];
+        Log::listen(function (...$args) use (&$logEntries): void {
+            $logEntries[] = $args;
         });
 
         $partner = Partner::factory()->create();
