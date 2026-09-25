@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Partner;
 use App\Models\WhatsappConnection;
-use App\Services\Meta\MetaClient;
+use App\Services\Meta\WhatsappMessageTemplateLister;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
 class TemplateController extends Controller
 {
     public function __construct(
-        private readonly MetaClient $metaClient,
+        private readonly WhatsappMessageTemplateLister $templateLister,
     ) {}
 
     public function index(Request $request): ApiResponse
@@ -36,18 +36,14 @@ class TemplateController extends Controller
             return ApiResponse::ok(['templates' => []]);
         }
 
-        $response = $this->metaClient->graph(
-            'GET',
-            $connection->waba_id.'/message_templates',
-            accessToken: $credentials->access_token,
-        );
-
-        if ($response->failed()) {
+        try {
+            $templates = $this->templateLister->listForConnection($connection);
+        } catch (\Throwable) {
             return ApiResponse::error('templates_unavailable', 'Unable to fetch templates from Meta.', 502);
         }
 
         return ApiResponse::ok([
-            'templates' => data_get($response->json(), 'data', []),
+            'templates' => $templates,
         ]);
     }
 
