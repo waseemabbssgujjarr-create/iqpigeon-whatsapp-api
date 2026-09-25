@@ -2,6 +2,7 @@
 
 namespace App\Services\Meta;
 
+use App\Support\MetaEmbeddedSignupExtras;
 use App\Models\EmbeddedSignupSession;
 use App\Models\WhatsappConnectionCredential;
 use App\Services\ConnectionOnboardingService;
@@ -28,12 +29,17 @@ class MetaEmbeddedSignupService
         $appId = (string) config('services.meta.app_id');
         $redirectUri = url('/oauth/meta/callback');
 
+        $extras = $flow === self::FLOW_COEXISTENCE
+            ? MetaEmbeddedSignupExtras::v4Default()
+            : MetaEmbeddedSignupExtras::v4ApiAccessOnly();
+
         $query = http_build_query([
             'client_id' => $appId,
             'redirect_uri' => $redirectUri,
             'state' => $rawToken,
             'response_type' => 'code',
             'config_id' => $configId,
+            'extras' => MetaEmbeddedSignupExtras::encode($extras),
         ]);
 
         $version = ltrim((string) config('services.meta.graph_version', 'v21.0'), '/');

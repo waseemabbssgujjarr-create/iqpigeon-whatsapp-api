@@ -5,7 +5,7 @@ IQPigeon supports two Meta Embedded Signup paths:
 | Path | Dashboard action | Meta configuration |
 |------|------------------|--------------------|
 | **Standard Cloud API** | “Set up new Cloud API number” | `META_CONFIG_ID` (redirect OAuth) |
-| **Coexistence (Business app)** | “Connect existing Business app number” | `META_ES_CONFIG_ID_COEXISTENCE` (JS SDK + `whatsapp_business_app_onboarding`) |
+| **Coexistence (Business app)** | “Connect existing Business app number” | Same v4 `META_ES_CONFIG_ID` (JS SDK; optional `META_ES_CONFIG_ID_COEXISTENCE` override) |
 
 ## Meta “Ineligible” in the phone picker
 
@@ -20,6 +20,27 @@ Common Meta-side reasons:
 - Policy or quality restrictions on the WABA
 
 **Action:** Use **Connect existing Business app number** (coexistence config) for eligible lines, or **standard Cloud API** for a new/API number. If Meta keeps showing Ineligible, resolve in Meta Business Manager or pick “Enter a new phone number”.
+
+## Embedded Signup v4 (Meta-confirmed)
+
+For **Embedded Signup v4**, Meta requires:
+
+- **`version: "v4"`** in `extras`
+- **Do not** pass `featureType` or `sessionInfoVersion` (legacy v2/v3 coexistence keys; they break v4 UI)
+- Coexistence is **automatic** on v4 — one `config_id` can serve API-only and Business App onboarding
+- Use **`features: ["api_access_only"]`** only when you want to narrow to Cloud API / new-number setup
+
+| Product | Coexistence / both paths | API-only (new number) |
+|---------|--------------------------|------------------------|
+| IQPigeon CRM (`FB.login` + onboard URL) | `{"version":"v4"}` | same (user picks in Meta UI) |
+| WhatsApp API SaaS — Business app button | `EMBEDDED_SIGNUP_V4_EXTRAS` in JS SDK | n/a |
+| WhatsApp API SaaS — standard redirect OAuth | n/a | `{"version":"v4","features":["api_access_only"]}` |
+
+Meta deprecates Embedded Signup v2/v3 in **2026** — keep v4 extras only.
+
+## Webhook fields (coexistence)
+
+Subscribe in Meta App → WhatsApp → Configuration: `messages`, `history`, `smb_app_state_sync`, and `smb_message_echoes`.
 
 ## After signup
 
