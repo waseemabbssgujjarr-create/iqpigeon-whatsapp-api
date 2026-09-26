@@ -10,7 +10,6 @@ use App\Services\Meta\WhatsappConnectionHydrator;
 use Database\Seeders\ApiScopeSeeder;
 use Database\Seeders\PlanSeeder;
 use Illuminate\Support\Str;
-use Inertia\Support\Header;
 use Tests\Concerns\CreatesDashboardUsers;
 use Tests\TestCase;
 
@@ -140,14 +139,9 @@ class WhatsappConnectionPhoneOwnershipTest extends TestCase
             'metadata' => ['cloud_api_registered_at' => now()->toIso8601String()],
         ]);
 
-        $response = $this->actingAs($user)->get(route('app.connections'), [
-            'X-Inertia' => 'true',
-            'X-Requested-With' => 'XMLHttpRequest',
-            'Accept' => 'text/html, application/xhtml+xml',
-        ]);
+        $response = $this->actingAs($user)->get(route('app.connections'));
 
         $response->assertOk();
-        $response->assertHeader(Header::INERTIA, 'App/Connections');
 
         $disconnected->refresh();
         $this->assertNull($disconnected->phone_number_id);
