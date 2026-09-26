@@ -27,6 +27,13 @@ class ConnectionController extends Controller
             ? $partner->whatsappConnections()->with('credentials')->orderByDesc('id')->get()->map(function ($c) use ($hydrator, $registration) {
                 $hydrator->reconcileOperationalStatus($c);
                 $c->refresh();
+
+                $metadata = is_array($c->metadata) ? $c->metadata : [];
+                if (($metadata['onboarding_source'] ?? '') === 'coexistence' && $c->connection_status === ConnectionStatus::Pending) {
+                    $registration->applyOperationalStatusAfterHydration($c);
+                    $c->refresh();
+                }
+
                 $pendingSession = $c->embeddedSignupSessions()
                     ->where('status', 'pending')
                     ->where('expires_at', '>', now())
@@ -36,7 +43,8 @@ class ConnectionController extends Controller
                 $status = $c->connection_status->value;
                 $hasCredentials = $c->credentials !== null;
                 $missingPhone = $c->phone_number_id === null || $c->phone_number_id === '';
-                $needsRegistration = ! $missingPhone && $hasCredentials && ! $registration->isRegisteredForSending($c);
+                $needsRegistration = $registration->requiresCloudApiPinRegistration($c);
+                $isCoexistence = ($metadata['onboarding_source'] ?? '') === 'coexistence';
 
                 $setupHint = match ($status) {
                     'pending' => $needsRegistration
@@ -65,6 +73,8 @@ class ConnectionController extends Controller
                     'can_sync_from_meta' => $status === 'pending' && $hasCredentials && $missingPhone,
                     'can_register_cloud_api' => $status === 'pending' && $needsRegistration,
                     'meta_linked_awaiting_registration' => $status === 'pending' && $needsRegistration,
+                    'onboarding_source' => (string) ($metadata['onboarding_source'] ?? ''),
+                    'is_coexistence' => $isCoexistence,
                     'setup_hint' => $setupHint,
                 ];
             })
@@ -244,7 +254,13 @@ class ConnectionController extends Controller
         $result = $registration->registerWithPin($connection, $validated['pin']);
 
         if ($result['ok']) {
-            return redirect()->route('app.connections')->with('status', 'WhatsApp number registered for Cloud API sending.');
+            $connection->refresh();
+            $metadata = is_array($connection->metadata) ? $connection->metadata : [];
+            $message = ($metadata['onboarding_source'] ?? '') === 'coexistence'
+                ? 'WhatsApp Business App number is connected and ready for messaging.'
+                : 'WhatsApp number registered for Cloud API sending.';
+
+            return redirect()->route('app.connections')->with('status', $message);
         }
 
         return redirect()

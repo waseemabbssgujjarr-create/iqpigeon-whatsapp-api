@@ -7,6 +7,7 @@ const statusLabel = {
     active: { text: 'Connected', className: 'text-emerald-400' },
     pending: { text: 'Setup in progress', className: 'text-amber-400' },
     meta_linked: { text: 'Meta linked — one step left', className: 'text-amber-300' },
+    coexistence_linked: { text: 'Connected to WhatsApp Business App', className: 'text-emerald-300' },
     error: { text: 'Needs attention', className: 'text-red-400' },
     disconnected: { text: 'Removed', className: 'text-slate-500' },
     revoked: { text: 'Revoked', className: 'text-slate-500' },
@@ -203,9 +204,16 @@ export default function Connections({ connections, canConnect }) {
                     <div className="space-y-3">
                         {drafts.map((c) => {
                             const awaitingRegistration = c.meta_linked_awaiting_registration === true;
+                            const coexistencePendingLinked =
+                                c.is_coexistence &&
+                                c.connection_status === 'pending' &&
+                                c.phone_number_id &&
+                                !c.can_register_cloud_api;
                             const st = awaitingRegistration
                                 ? statusLabel.meta_linked
-                                : (statusLabel[c.connection_status] ?? statusLabel.pending);
+                                : coexistencePendingLinked
+                                  ? statusLabel.coexistence_linked
+                                  : (statusLabel[c.connection_status] ?? statusLabel.pending);
                             const continueKey = `continue-${c.uuid}`;
 
                             return (
@@ -216,6 +224,12 @@ export default function Connections({ connections, canConnect }) {
                                                 {c.display_phone_number ?? `Draft started ${formatWhen(c.created_at)}`}
                                             </p>
                                             <p className={`mt-1 text-sm ${st.className}`}>{st.text}</p>
+                                            {coexistencePendingLinked && (
+                                                <p className="mt-2 text-sm text-slate-300">
+                                                    This number uses WhatsApp Business App coexistence. No Cloud API PIN registration
+                                                    is required — refresh this page if it has not moved to Active yet.
+                                                </p>
+                                            )}
                                             {awaitingRegistration && (
                                                 <div className="mt-3 space-y-1 text-sm text-slate-300">
                                                     <p>

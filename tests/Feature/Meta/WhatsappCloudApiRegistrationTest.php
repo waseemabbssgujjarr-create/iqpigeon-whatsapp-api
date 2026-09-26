@@ -59,7 +59,7 @@ class WhatsappCloudApiRegistrationTest extends TestCase
         $this->assertTrue($service->isRegisteredForSending($connection));
     }
 
-    public function test_coexistence_onboarding_skips_pin_when_verified_snapshot_present(): void
+    public function test_coexistence_onboarding_skips_pin_without_cloud_api_register(): void
     {
         $partner = Partner::factory()->create();
         $connection = WhatsappConnection::query()->create([
@@ -69,10 +69,6 @@ class WhatsappCloudApiRegistrationTest extends TestCase
             'connection_status' => ConnectionStatus::Pending,
             'metadata' => [
                 'onboarding_source' => 'coexistence',
-                'meta_phone_snapshot' => [
-                    'code_verification_status' => 'VERIFIED',
-                    'platform_type' => 'CLOUD_API',
-                ],
             ],
         ]);
 
@@ -81,6 +77,40 @@ class WhatsappCloudApiRegistrationTest extends TestCase
         $connection->refresh();
         $this->assertSame(ConnectionStatus::Active, $connection->connection_status);
         $this->assertNotNull(data_get($connection->metadata, 'cloud_api_registered_at'));
+        $this->assertSame('coexistence_onboarding', data_get($connection->metadata, 'cloud_api_register_source'));
+    }
+
+    public function test_coexistence_register_with_pin_does_not_call_meta_register_endpoint(): void
+    {
+        Http::fake();
+
+        config([
+            'services.meta.app_id' => 'app-id',
+            'services.meta.app_secret' => 'app-secret',
+            'services.meta.graph_version' => 'v21.0',
+        ]);
+
+        $partner = Partner::factory()->create();
+        $connection = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'phone_number_id' => '758204954052103',
+            'connection_status' => ConnectionStatus::Pending,
+            'metadata' => ['onboarding_source' => 'coexistence'],
+        ]);
+
+        WhatsappConnectionCredential::query()->create([
+            'whatsapp_connection_id' => $connection->id,
+            'access_token' => 'token',
+            'phone_number_id' => '758204954052103',
+        ]);
+
+        $result = app(WhatsappCloudApiRegistrationService::class)->registerWithPin($connection, '123456');
+
+        $this->assertTrue($result['ok']);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/register'));
+        $connection->refresh();
+        $this->assertSame(ConnectionStatus::Active, $connection->connection_status);
     }
 
     public function test_health_outbound_not_ready_without_registration(): void

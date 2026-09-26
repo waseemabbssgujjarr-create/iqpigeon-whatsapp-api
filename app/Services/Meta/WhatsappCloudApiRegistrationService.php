@@ -33,6 +33,17 @@ class WhatsappCloudApiRegistrationService
     {
         $connection->loadMissing('credentials');
 
+        if ($this->shouldSkipPinRegistrationForCoexistence($connection)) {
+            $this->markRegistered($connection, confirmedVia: 'coexistence_onboarding');
+            $accessToken = $connection->credentials?->access_token;
+            $phoneNumberId = $connection->phone_number_id ?? $connection->credentials?->phone_number_id;
+            if (is_string($accessToken) && $accessToken !== '' && is_string($phoneNumberId) && $phoneNumberId !== '') {
+                $this->refreshPhoneSnapshot($connection, $accessToken, $phoneNumberId);
+            }
+
+            return ['ok' => true];
+        }
+
         $phoneNumberId = $connection->phone_number_id ?? $connection->credentials?->phone_number_id;
         $accessToken = $connection->credentials?->access_token;
 
@@ -160,7 +171,7 @@ class WhatsappCloudApiRegistrationService
     }
 
     /**
-     * Coexistence (WhatsApp Business App onboarding) numbers may not require PIN /register when Meta already linked Cloud API.
+     * WhatsApp Business App (coexistence / SMB) numbers must not use POST /{phone_number_id}/register.
      */
     public function shouldSkipPinRegistrationForCoexistence(WhatsappConnection $connection): bool
     {
@@ -171,10 +182,26 @@ class WhatsappCloudApiRegistrationService
             return false;
         }
 
-        $snapshot = is_array($metadata['meta_phone_snapshot'] ?? null) ? $metadata['meta_phone_snapshot'] : [];
-        $verification = strtoupper((string) ($snapshot['code_verification_status'] ?? ''));
+        $phoneNumberId = $connection->phone_number_id ?? $connection->credentials?->phone_number_id;
 
-        return $verification === 'VERIFIED';
+        return is_string($phoneNumberId) && $phoneNumberId !== '';
+    }
+
+    public function requiresCloudApiPinRegistration(WhatsappConnection $connection): bool
+    {
+        if ($this->isRegisteredForSending($connection)) {
+            return false;
+        }
+
+        $connection->loadMissing('credentials');
+        $hasPhone = ($connection->phone_number_id ?? $connection->credentials?->phone_number_id) !== null
+            && ($connection->phone_number_id ?? $connection->credentials?->phone_number_id) !== '';
+
+        if (! $hasPhone || $connection->credentials === null) {
+            return false;
+        }
+
+        return ! $this->shouldSkipPinRegistrationForCoexistence($connection);
     }
 
     /**
