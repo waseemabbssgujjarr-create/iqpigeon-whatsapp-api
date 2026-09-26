@@ -13,6 +13,7 @@ use App\Services\Meta\WhatsappConnectionHydrator;
 use App\Support\PartnerResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -161,7 +162,12 @@ class ConnectionController extends Controller
                 $validated['code'],
                 $validated['embedded_signup_event'] ?? [],
             );
-        } catch (\Throwable) {
+        } catch (\Throwable $exception) {
+            Log::warning('meta.embedded_signup.complete_failed', [
+                'connection_uuid' => $uuid,
+                'message' => $exception->getMessage(),
+            ]);
+
             return redirect()
                 ->route('app.connections')
                 ->withErrors(['connect' => 'Meta could not complete WhatsApp connection. Try again or use standard Cloud API setup.']);

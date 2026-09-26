@@ -58,7 +58,7 @@ class MetaEmbeddedSignupService
             throw new \RuntimeException('Invalid or expired onboarding session.');
         }
 
-        return $this->finalizeSession($session, $code, $embeddedSignupEvent);
+        return $this->finalizeSession($session, $code, $embeddedSignupEvent, tokenExchangeUsesRedirectUri: true);
     }
 
     /**
@@ -70,25 +70,40 @@ class MetaEmbeddedSignupService
             throw new \RuntimeException('Onboarding session is not active.');
         }
 
-        return $this->finalizeSession($session, $code, $embeddedSignupEvent);
+        // FB.login / Embedded Signup JS: exchange code without redirect_uri (Meta error 100 if included).
+        return $this->finalizeSession($session, $code, $embeddedSignupEvent, tokenExchangeUsesRedirectUri: false);
     }
 
     /**
      * @param  array<string, mixed>  $embeddedSignupEvent
      */
-    private function finalizeSession(EmbeddedSignupSession $session, string $code, array $embeddedSignupEvent): EmbeddedSignupSession
-    {
+    private function finalizeSession(
+        EmbeddedSignupSession $session,
+        string $code,
+        array $embeddedSignupEvent,
+        bool $tokenExchangeUsesRedirectUri,
+    ): EmbeddedSignupSession {
         $appId = (string) config('services.meta.app_id');
         $appSecret = (string) config('services.meta.app_secret');
 
-        $tokenResponse = $this->metaClient->graph('GET', 'oauth/access_token', [
+        $tokenQuery = [
             'client_id' => $appId,
             'client_secret' => $appSecret,
             'code' => $code,
-        ]);
+        ];
+
+        if ($tokenExchangeUsesRedirectUri) {
+            $tokenQuery['redirect_uri'] = url('/oauth/meta/callback');
+        }
+
+        $tokenResponse = $this->metaClient->graph('GET', 'oauth/access_token', $tokenQuery);
 
         if ($tokenResponse->failed()) {
-            Log::warning('meta.oauth.token_exchange_failed', ['session_id' => $session->id]);
+            Log::warning('meta.oauth.token_exchange_failed', [
+                'session_id' => $session->id,
+                'uses_redirect_uri' => $tokenExchangeUsesRedirectUri,
+                'error_message' => data_get($tokenResponse->json(), 'error.message'),
+            ]);
 
             throw new \RuntimeException('Failed to exchange Meta authorization code.');
         }
