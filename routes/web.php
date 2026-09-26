@@ -17,6 +17,7 @@ use App\Http\Controllers\Auth\FacebookOAuthController;
 use App\Http\Controllers\Auth\GoogleOAuthController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Debug\MetaEmbeddedSignupDiagnosticController;
 use App\Http\Controllers\OAuth\MetaOAuthController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -72,6 +73,9 @@ Route::middleware('auth')->group(function (): void {
 
 Route::get('oauth/meta/start', [MetaOAuthController::class, 'start'])->name('oauth.meta.start');
 Route::get('oauth/meta/callback', [MetaOAuthController::class, 'callback'])->name('oauth.meta.callback');
+
+Route::middleware(['auth', 'verified'])->get('/debug/meta-embedded-signup', MetaEmbeddedSignupDiagnosticController::class)
+    ->name('debug.meta-embedded-signup');
 
 Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
