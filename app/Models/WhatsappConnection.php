@@ -90,10 +90,22 @@ class WhatsappConnection extends Model
             return;
         }
 
-        static::query()
+        $connectionIds = static::query()
             ->where('partner_id', $partnerId)
             ->where('phone_number_id', $phoneNumberId)
             ->where('id', '!=', $exceptConnectionId)
+            ->pluck('id');
+
+        if ($connectionIds->isEmpty()) {
+            return;
+        }
+
+        static::query()
+            ->whereIn('id', $connectionIds)
+            ->update(['phone_number_id' => null]);
+
+        WhatsappConnectionCredential::query()
+            ->whereIn('whatsapp_connection_id', $connectionIds)
             ->update(['phone_number_id' => null]);
     }
 }

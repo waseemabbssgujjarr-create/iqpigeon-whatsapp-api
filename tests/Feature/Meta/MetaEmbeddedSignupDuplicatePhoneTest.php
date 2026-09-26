@@ -6,6 +6,8 @@ use App\Enums\ConnectionStatus;
 use App\Models\EmbeddedSignupSession;
 use App\Models\Partner;
 use App\Models\WhatsappConnection;
+use App\Models\WhatsappConnectionCredential;
+use App\Services\Meta\WhatsappConnectionHydrator;
 use App\Services\Meta\MetaEmbeddedSignupService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -101,5 +103,36 @@ class MetaEmbeddedSignupDuplicatePhoneTest extends TestCase
 
         $this->assertNull($previous->phone_number_id);
         $this->assertSame('758204954052103', $draft->phone_number_id);
+    }
+
+    public function test_dashboard_reconcile_does_not_restore_phone_on_disconnected_row(): void
+    {
+        $partner = Partner::factory()->create();
+
+        $previous = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'connection_status' => ConnectionStatus::Disconnected,
+            'phone_number_id' => null,
+        ]);
+
+        WhatsappConnectionCredential::query()->create([
+            'whatsapp_connection_id' => $previous->id,
+            'access_token' => 'test-token',
+            'phone_number_id' => '758204954052103',
+        ]);
+
+        WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'phone_number_id' => '758204954052103',
+            'connection_status' => ConnectionStatus::Active,
+            'metadata' => ['cloud_api_registered_at' => now()->toIso8601String()],
+        ]);
+
+        app(WhatsappConnectionHydrator::class)->reconcileOperationalStatus($previous->fresh(['credentials']));
+
+        $previous->refresh();
+        $this->assertNull($previous->phone_number_id);
     }
 }

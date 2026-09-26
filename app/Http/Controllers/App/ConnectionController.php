@@ -324,21 +324,29 @@ class ConnectionController extends Controller
             ->where('uuid', $uuid)
             ->firstOrFail();
 
+        $connection->loadMissing('credentials');
+
+        $disconnectFields = [
+            'connection_status' => ConnectionStatus::Disconnected,
+            'disconnected_at' => now(),
+            'phone_number_id' => null,
+            'waba_id' => null,
+        ];
+
         if ($connection->connection_status === ConnectionStatus::Active) {
-            $connection->forceFill([
-                'connection_status' => ConnectionStatus::Disconnected,
-                'disconnected_at' => now(),
-                'phone_number_id' => null,
-            ])->save();
+            $connection->forceFill($disconnectFields)->save();
         } else {
             $connection->embeddedSignupSessions()
                 ->where('status', 'pending')
                 ->update(['status' => 'expired']);
 
-            $connection->forceFill([
-                'connection_status' => ConnectionStatus::Disconnected,
-                'disconnected_at' => now(),
+            $connection->forceFill($disconnectFields)->save();
+        }
+
+        if ($connection->credentials !== null) {
+            $connection->credentials->forceFill([
                 'phone_number_id' => null,
+                'waba_id' => null,
             ])->save();
         }
 

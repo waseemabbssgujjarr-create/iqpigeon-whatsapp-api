@@ -111,7 +111,16 @@ class WhatsappConnectionHydrator
         $phoneOnConnection = $this->normalizedPhoneId($connection->phone_number_id);
         $phoneOnCredential = $this->normalizedPhoneId($connection->credentials?->phone_number_id);
 
-        if ($phoneOnConnection === null && $phoneOnCredential !== null) {
+        if (
+            $phoneOnConnection === null
+            && $phoneOnCredential !== null
+            && in_array($connection->connection_status, [ConnectionStatus::Pending, ConnectionStatus::Active], true)
+        ) {
+            WhatsappConnection::releasePhoneNumberId(
+                (int) $connection->partner_id,
+                $phoneOnCredential,
+                (int) $connection->id,
+            );
             $connection->forceFill(['phone_number_id' => $phoneOnCredential])->save();
             $phoneOnConnection = $phoneOnCredential;
         }
