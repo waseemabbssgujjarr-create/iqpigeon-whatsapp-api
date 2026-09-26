@@ -30,14 +30,15 @@ class MetaEmbeddedSignupExtrasTest extends TestCase
         ]);
     }
 
-    public function test_embedded_signup_js_does_not_use_legacy_extras(): void
+    public function test_coexistence_embedded_signup_js_extras_match_meta_business_app_flow(): void
     {
         $path = dirname(__DIR__, 3).'/resources/js/lib/metaEmbeddedSignup.js';
         $source = (string) file_get_contents($path);
 
-        $this->assertStringContainsString('EMBEDDED_SIGNUP_V4_EXTRAS', $source);
-        $this->assertStringNotContainsString('featureType', $source);
-        $this->assertStringNotContainsString('sessionInfoVersion', $source);
-        $this->assertStringNotContainsString('whatsapp_business_app_onboarding', $source);
+        $this->assertStringContainsString('COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS', $source);
+        $this->assertStringContainsString('whatsapp_business_app_onboarding', $source);
+        $this->assertStringContainsString('sessionInfoVersion', $source);
+        $this->assertStringNotContainsString("'api_access_only'", $source);
+        $this->assertStringNotContainsString("version: 'v4'", $source);
     }
 }
