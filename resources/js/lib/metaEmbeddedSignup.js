@@ -1,12 +1,12 @@
 const SDK_URL = 'https://connect.facebook.net/en_US/sdk.js';
 
 /**
- * WhatsApp Business App coexistence (Embedded Signup v4).
- * Do not add api_access_only or sessionInfoVersion here.
+ * WhatsApp Business App coexistence launch extras (FB.login with standard v4 config_id).
  */
 export const COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS = {
     setup: {},
     featureType: 'whatsapp_business_app_onboarding',
+    sessionInfoVersion: '3',
 };
 
 let sdkPromise = null;

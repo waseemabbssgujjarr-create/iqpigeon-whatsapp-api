@@ -47,7 +47,7 @@ class MetaEmbeddedSignupExtrasTest extends TestCase
 
         $this->assertStringContainsString('COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS', $source);
         $this->assertStringContainsString('whatsapp_business_app_onboarding', $source);
-        $this->assertStringNotContainsString("sessionInfoVersion: '3'", $source);
+        $this->assertStringContainsString("sessionInfoVersion: '3'", $source);
         $this->assertStringNotContainsString("'api_access_only'", $source);
         $this->assertStringNotContainsString("version: 'v4'", $source);
         $this->assertStringContainsString('fallback_redirect_uri', $source);

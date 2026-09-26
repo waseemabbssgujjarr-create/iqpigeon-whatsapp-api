@@ -47,7 +47,8 @@ export default function Connections({ connections, canConnect }) {
                 const { code, embeddedEvent } = await launchCoexistenceEmbeddedSignup({
                     appId: metaEmbeddedSignup.app_id,
                     graphVersion: metaEmbeddedSignup.graph_version,
-                    configId: metaEmbeddedSignup.config_id_coexistence || metaEmbeddedSignup.config_id_standard,
+                    // v4 standard Login for Business config + featureType extras (see docs/COEXISTENCE-ONBOARDING.md).
+                    configId: metaEmbeddedSignup.config_id_standard,
                     oauthRedirectUri: metaEmbeddedSignup.oauth_redirect_uri,
                 });
 
