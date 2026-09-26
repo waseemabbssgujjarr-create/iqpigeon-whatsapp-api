@@ -78,14 +78,12 @@ class MetaEmbeddedSignupService
      */
     private function finalizeSession(EmbeddedSignupSession $session, string $code, array $embeddedSignupEvent): EmbeddedSignupSession
     {
-        $redirectUri = url('/oauth/meta/callback');
         $appId = (string) config('services.meta.app_id');
         $appSecret = (string) config('services.meta.app_secret');
 
         $tokenResponse = $this->metaClient->graph('GET', 'oauth/access_token', [
             'client_id' => $appId,
             'client_secret' => $appSecret,
-            'redirect_uri' => $redirectUri,
             'code' => $code,
         ]);
 
