@@ -50,5 +50,6 @@ class MetaEmbeddedSignupExtrasTest extends TestCase
         $this->assertStringNotContainsString("sessionInfoVersion: '3'", $source);
         $this->assertStringNotContainsString("'api_access_only'", $source);
         $this->assertStringNotContainsString("version: 'v4'", $source);
+        $this->assertStringContainsString('fallback_redirect_uri', $source);
     }
 }

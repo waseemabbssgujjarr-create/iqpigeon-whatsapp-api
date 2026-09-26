@@ -48,6 +48,7 @@ export default function Connections({ connections, canConnect }) {
                     appId: metaEmbeddedSignup.app_id,
                     graphVersion: metaEmbeddedSignup.graph_version,
                     configId: metaEmbeddedSignup.config_id_coexistence || metaEmbeddedSignup.config_id_standard,
+                    oauthRedirectUri: metaEmbeddedSignup.oauth_redirect_uri,
                 });
 
                 if (cancelled) {

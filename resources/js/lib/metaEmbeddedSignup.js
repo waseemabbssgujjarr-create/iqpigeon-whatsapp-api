@@ -55,7 +55,7 @@ export function loadFacebookSdk(appId, graphVersion) {
 /**
  * @returns {Promise<{ code: string, embeddedEvent: object|null }>}
  */
-export function launchCoexistenceEmbeddedSignup({ appId, graphVersion, configId }) {
+export function launchCoexistenceEmbeddedSignup({ appId, graphVersion, configId, oauthRedirectUri }) {
     return new Promise((resolve, reject) => {
         let embeddedEvent = null;
 
@@ -104,6 +104,7 @@ export function launchCoexistenceEmbeddedSignup({ appId, graphVersion, configId 
                         response_type: 'code',
                         override_default_response_type: true,
                         extras: COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS,
+                        ...(oauthRedirectUri ? { fallback_redirect_uri: oauthRedirectUri } : {}),
                     },
                 );
             })

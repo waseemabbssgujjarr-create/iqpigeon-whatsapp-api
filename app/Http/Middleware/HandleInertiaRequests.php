@@ -54,6 +54,8 @@ class HandleInertiaRequests extends Middleware
                 'graph_version' => ltrim((string) config('services.meta.graph_version', 'v21.0'), '/'),
                 'config_id_standard' => (string) config('services.meta.es_config_id'),
                 'config_id_coexistence' => (string) (config('services.meta.es_config_id_coexistence') ?: config('services.meta.es_config_id')),
+                // FB.login (Strict Mode) requires fallback_redirect_uri to match Valid OAuth Redirect URIs exactly.
+                'oauth_redirect_uri' => url('/oauth/meta/callback'),
             ],
             'socialAuth' => fn () => [
                 'google' => (string) config('services.google.client_id') !== ''
