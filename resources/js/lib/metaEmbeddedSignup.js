@@ -1,8 +1,9 @@
 const SDK_URL = 'https://connect.facebook.net/en_US/sdk.js';
 
-/** Embedded Signup v4 — coexistence is automatic; do not pass featureType or sessionInfoVersion. */
-export const EMBEDDED_SIGNUP_V4_EXTRAS = {
-    version: 'v4',
+/** WhatsApp Business App coexistence (Embedded Signup) — no sessionInfoVersion or api_access_only. */
+export const COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS = {
+    setup: {},
+    featureType: 'whatsapp_business_app_onboarding',
 };
 
 let sdkPromise = null;
@@ -99,7 +100,7 @@ export function launchCoexistenceEmbeddedSignup({ appId, graphVersion, configId 
                         config_id: configId,
                         response_type: 'code',
                         override_default_response_type: true,
-                        extras: EMBEDDED_SIGNUP_V4_EXTRAS,
+                        extras: COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS,
                     },
                 );
             })
