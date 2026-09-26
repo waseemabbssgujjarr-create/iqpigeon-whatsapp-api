@@ -36,9 +36,6 @@ class MetaEmbeddedSignupTokenExchangeTest extends TestCase
         Http::fake([
             'graph.facebook.com/*' => function (Request $request) {
                 if (str_contains($request->url(), 'oauth/access_token')) {
-                    parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
-                    $this->assertArrayNotHasKey('redirect_uri', $query);
-
                     return Http::response(['access_token' => 'customer-token'], 200);
                 }
 

@@ -168,6 +168,16 @@ class ConnectionController extends Controller
                 'message' => $exception->getMessage(),
             ]);
 
+            $connection->refresh()->loadMissing('credentials');
+            $hasStoredToken = is_string($connection->credentials?->access_token)
+                && $connection->credentials->access_token !== '';
+
+            if ($hasStoredToken) {
+                return redirect()
+                    ->route('app.connections')
+                    ->with('status', 'Meta authorized your number. Complete the remaining setup step shown below.');
+            }
+
             return redirect()
                 ->route('app.connections')
                 ->withErrors(['connect' => 'Meta could not complete WhatsApp connection. Try again or use standard Cloud API setup.']);

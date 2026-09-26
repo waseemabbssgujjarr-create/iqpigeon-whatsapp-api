@@ -58,7 +58,7 @@ class MetaEmbeddedSignupService
             throw new \RuntimeException('Invalid or expired onboarding session.');
         }
 
-        return $this->finalizeSession($session, $code, $embeddedSignupEvent, tokenExchangeUsesRedirectUri: true);
+        return $this->finalizeSession($session, $code, $embeddedSignupEvent, oauthFlow: 'redirect');
     }
 
     /**
@@ -66,53 +66,28 @@ class MetaEmbeddedSignupService
      */
     public function completeForConnection(EmbeddedSignupSession $session, string $code, array $embeddedSignupEvent = []): EmbeddedSignupSession
     {
+        if ($session->status === 'completed') {
+            return $session->fresh(['whatsappConnection', 'partner']);
+        }
+
         if ($session->status !== 'pending' || $session->expires_at <= now()) {
             throw new \RuntimeException('Onboarding session is not active.');
         }
 
-        // FB.login / Embedded Signup JS: exchange code without redirect_uri (Meta error 100 if included).
-        return $this->finalizeSession($session, $code, $embeddedSignupEvent, tokenExchangeUsesRedirectUri: false);
+        return $this->finalizeSession($session, $code, $embeddedSignupEvent, oauthFlow: 'js_sdk');
     }
 
     /**
      * @param  array<string, mixed>  $embeddedSignupEvent
+     * @param  'js_sdk'|'redirect'  $oauthFlow
      */
     private function finalizeSession(
         EmbeddedSignupSession $session,
         string $code,
         array $embeddedSignupEvent,
-        bool $tokenExchangeUsesRedirectUri,
+        string $oauthFlow,
     ): EmbeddedSignupSession {
-        $appId = (string) config('services.meta.app_id');
-        $appSecret = (string) config('services.meta.app_secret');
-
-        $tokenQuery = [
-            'client_id' => $appId,
-            'client_secret' => $appSecret,
-            'code' => $code,
-        ];
-
-        if ($tokenExchangeUsesRedirectUri) {
-            $tokenQuery['redirect_uri'] = url('/oauth/meta/callback');
-        }
-
-        $tokenResponse = $this->metaClient->graph('GET', 'oauth/access_token', $tokenQuery);
-
-        if ($tokenResponse->failed()) {
-            Log::warning('meta.oauth.token_exchange_failed', [
-                'session_id' => $session->id,
-                'uses_redirect_uri' => $tokenExchangeUsesRedirectUri,
-                'error_message' => data_get($tokenResponse->json(), 'error.message'),
-            ]);
-
-            throw new \RuntimeException('Failed to exchange Meta authorization code.');
-        }
-
-        $accessToken = (string) data_get($tokenResponse->json(), 'access_token', '');
-
-        if ($accessToken === '') {
-            throw new \RuntimeException('Meta access token missing from response.');
-        }
+        $accessToken = $this->metaClient->exchangeOAuthAuthorizationCode($code, $oauthFlow);
 
         $connection = $session->whatsappConnection;
 

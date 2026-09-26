@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import { launchCoexistenceEmbeddedSignup } from '../../lib/metaEmbeddedSignup';
 
@@ -33,12 +33,19 @@ export default function Connections({ connections, canConnect }) {
     const inactive = connections?.filter((c) => ['disconnected', 'revoked'].includes(c.connection_status)) ?? [];
 
     const isBusy = pendingAction !== null;
+    const coexistenceLaunchKeyRef = useRef(null);
 
     useEffect(() => {
         const payload = flash?.coexistence_onboarding;
         if (!payload?.connection_uuid || !payload?.session_token || !metaEmbeddedSignup?.app_id) {
             return;
         }
+
+        const launchKey = `${payload.connection_uuid}:${payload.session_token}`;
+        if (coexistenceLaunchKeyRef.current === launchKey) {
+            return;
+        }
+        coexistenceLaunchKeyRef.current = launchKey;
 
         let cancelled = false;
 

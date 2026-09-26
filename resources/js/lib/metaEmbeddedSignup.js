@@ -86,18 +86,23 @@ export function launchCoexistenceEmbeddedSignup({ appId, graphVersion, configId,
             .then((FB) => {
                 FB.login(
                     (response) => {
-                        window.removeEventListener('message', onMessage);
-
                         if (!response?.authResponse?.code) {
+                            window.removeEventListener('message', onMessage);
                             reject(new Error('Meta signup was cancelled or did not return an authorization code.'));
 
                             return;
                         }
 
-                        resolve({
-                            code: response.authResponse.code,
-                            embeddedEvent,
-                        });
+                        const code = response.authResponse.code;
+
+                        // WA_EMBEDDED_SIGNUP postMessage often arrives in the same tick as the auth callback.
+                        window.setTimeout(() => {
+                            window.removeEventListener('message', onMessage);
+                            resolve({
+                                code,
+                                embeddedEvent,
+                            });
+                        }, 400);
                     },
                     {
                         config_id: configId,
