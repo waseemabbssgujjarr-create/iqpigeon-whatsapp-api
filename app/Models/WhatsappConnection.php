@@ -78,4 +78,22 @@ class WhatsappConnection extends Model
     {
         return $this->hasMany(Message::class);
     }
+
+    /**
+     * `(partner_id, phone_number_id)` is unique; disconnected rows must not block reconnect.
+     */
+    public static function releasePhoneNumberId(int $partnerId, string $phoneNumberId, int $exceptConnectionId): void
+    {
+        $phoneNumberId = trim($phoneNumberId);
+
+        if ($phoneNumberId === '') {
+            return;
+        }
+
+        static::query()
+            ->where('partner_id', $partnerId)
+            ->where('phone_number_id', $phoneNumberId)
+            ->where('id', '!=', $exceptConnectionId)
+            ->update(['phone_number_id' => null]);
+    }
 }

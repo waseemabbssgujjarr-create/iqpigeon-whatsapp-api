@@ -328,6 +328,7 @@ class ConnectionController extends Controller
             $connection->forceFill([
                 'connection_status' => ConnectionStatus::Disconnected,
                 'disconnected_at' => now(),
+                'phone_number_id' => null,
             ])->save();
         } else {
             $connection->embeddedSignupSessions()
@@ -337,6 +338,7 @@ class ConnectionController extends Controller
             $connection->forceFill([
                 'connection_status' => ConnectionStatus::Disconnected,
                 'disconnected_at' => now(),
+                'phone_number_id' => null,
             ])->save();
         }
 

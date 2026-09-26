@@ -4,6 +4,7 @@ namespace App\Services\Meta;
 
 use App\Support\MetaEmbeddedSignupExtras;
 use App\Models\EmbeddedSignupSession;
+use App\Models\WhatsappConnection;
 use App\Models\WhatsappConnectionCredential;
 use App\Services\ConnectionOnboardingService;
 use Illuminate\Support\Facades\Log;
@@ -157,6 +158,11 @@ class MetaEmbeddedSignupService
         $wabaId = (string) ($metadata['embedded_signup_event']['waba_id'] ?? '');
 
         if ($phoneNumberId !== '') {
+            WhatsappConnection::releasePhoneNumberId(
+                (int) $connection->partner_id,
+                $phoneNumberId,
+                (int) $connection->id,
+            );
             $connection->forceFill(['phone_number_id' => $phoneNumberId]);
         }
 

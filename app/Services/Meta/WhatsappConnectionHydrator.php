@@ -68,8 +68,15 @@ class WhatsappConnectionHydrator
                 continue;
             }
 
+            $phoneNumberIdString = (string) $phoneNumberId;
+            WhatsappConnection::releasePhoneNumberId(
+                (int) $connection->partner_id,
+                $phoneNumberIdString,
+                (int) $connection->id,
+            );
+
             $connection->forceFill([
-                'phone_number_id' => (string) $phoneNumberId,
+                'phone_number_id' => $phoneNumberIdString,
                 'display_phone_number' => data_get($selected, 'display_phone_number'),
                 'waba_id' => $wabaId,
             ])->save();
