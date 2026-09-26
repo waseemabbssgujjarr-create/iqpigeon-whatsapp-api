@@ -271,17 +271,11 @@ final class MetaEmbeddedSignupDiagnosticReport
      */
     private function checkFrontendManifest(array &$sections, array &$summary): void
     {
-        $manifestPath = public_path('build/manifest.json');
-        $manifest = [];
-        if (is_readable($manifestPath)) {
-            $manifest = json_decode((string) file_get_contents($manifestPath), true);
-            $manifest = is_array($manifest) ? $manifest : [];
-        }
-
-        $entryKey = 'resources/js/app.jsx';
-        $jsFile = (string) data_get($manifest, "{$entryKey}.file", '');
-        $jsPath = $jsFile !== '' ? public_path('build/'.$jsFile) : '';
-        $jsSource = ($jsPath !== '' && is_readable($jsPath)) ? (string) file_get_contents($jsPath) : '';
+        $inspector = new ViteBuildManifestInspector;
+        $resolved = $inspector->resolveMainJsEntry();
+        $jsFile = $resolved['js_asset'];
+        $jsPath = $resolved['js_path'];
+        $jsSource = $inspector->readMainJsSource();
 
         $hasFeature = str_contains($jsSource, 'whatsapp_business_app_onboarding');
         $hasSession = str_contains($jsSource, 'sessionInfoVersion');
@@ -290,11 +284,16 @@ final class MetaEmbeddedSignupDiagnosticReport
 
         $pass = $hasFeature && $hasSession && ! $hasV4 && $jsFile !== '';
 
+        $manifestPath = $resolved['manifest_path'];
         $sections['check6_manifest'] = [
             'manifest_path' => $manifestPath,
+            'manifest_readable' => $resolved['manifest_readable'],
             'manifest_mtime' => is_readable($manifestPath) ? date('c', (int) filemtime($manifestPath)) : null,
+            'entry_key' => $resolved['entry_key'],
+            'resolution' => $resolved['resolution'],
             'js_asset' => $jsFile,
             'js_path' => $jsPath,
+            'js_readable' => $resolved['js_readable'],
             'featureType_present' => $hasFeature,
             'sessionInfoVersion_present' => $hasSession,
             'version_v4_present' => $hasV4,
@@ -304,7 +303,7 @@ final class MetaEmbeddedSignupDiagnosticReport
         $summary[] = [
             'check' => 'Compiled JS (manifest)',
             'status' => $pass ? 'PASS' : 'FAIL',
-            'result' => $jsFile !== '' ? basename($jsFile) : 'manifest entry missing',
+            'result' => $jsFile !== '' ? basename($jsFile).' ('.$resolved['resolution'].')' : 'bundle not found',
         ];
         $summary[] = [
             'check' => 'JS sessionInfoVersion',
@@ -324,12 +323,8 @@ final class MetaEmbeddedSignupDiagnosticReport
      */
     private function checkLiveHtmlAsset(array &$sections, array &$summary): void
     {
-        $manifestPath = public_path('build/manifest.json');
-        $manifest = is_readable($manifestPath)
-            ? json_decode((string) file_get_contents($manifestPath), true)
-            : [];
-        $manifest = is_array($manifest) ? $manifest : [];
-        $expectedJs = (string) data_get($manifest, 'resources/js/app.jsx.file', '');
+        $resolved = (new ViteBuildManifestInspector)->resolveMainJsEntry();
+        $expectedJs = $resolved['js_asset'];
 
         $htmlJs = null;
         $staleLikely = null;
@@ -369,13 +364,10 @@ final class MetaEmbeddedSignupDiagnosticReport
      */
     private function checkFbLoginPath(array &$sections, array &$summary): void
     {
-        $manifestPath = public_path('build/manifest.json');
-        $manifest = is_readable($manifestPath)
-            ? json_decode((string) file_get_contents($manifestPath), true)
-            : [];
-        $jsFile = (string) data_get($manifest, 'resources/js/app.jsx.file', '');
-        $jsPath = $jsFile !== '' ? public_path('build/'.$jsFile) : '';
-        $jsSource = ($jsPath !== '' && is_readable($jsPath)) ? (string) file_get_contents($jsPath) : '';
+        $inspector = new ViteBuildManifestInspector;
+        $resolved = $inspector->resolveMainJsEntry();
+        $jsFile = $resolved['js_asset'];
+        $jsSource = $inspector->readMainJsSource();
 
         $hasFbLogin = str_contains($jsSource, 'FB.login');
         $hasCoexistenceExtras = str_contains($jsSource, 'COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS')

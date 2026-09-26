@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Debug;
 
 use App\Http\Controllers\Controller;
 use App\Support\MetaEmbeddedSignupDiagnosticReport;
+use App\Support\MetaEmbeddedSignupLiveOauthProbe;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -18,6 +19,16 @@ class MetaEmbeddedSignupDiagnosticController extends Controller
 
         return view('debug.meta-embedded-signup', [
             'report' => $data,
+            'appUrl' => config('app.url'),
+        ]);
+    }
+
+    public function liveOauthProbe(Request $request, MetaEmbeddedSignupLiveOauthProbe $probe): View
+    {
+        $data = $probe->run($request->user());
+
+        return view('debug.meta-embedded-signup-live-oauth-probe', [
+            'probe' => $data,
             'appUrl' => config('app.url'),
         ]);
     }

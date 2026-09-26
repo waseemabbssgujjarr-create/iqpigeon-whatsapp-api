@@ -76,6 +76,8 @@ Route::get('oauth/meta/callback', [MetaOAuthController::class, 'callback'])->nam
 
 Route::middleware(['auth', 'verified'])->get('/debug/meta-embedded-signup', MetaEmbeddedSignupDiagnosticController::class)
     ->name('debug.meta-embedded-signup');
+Route::middleware(['auth', 'verified'])->get('/debug/meta-embedded-signup/live-oauth-probe', [MetaEmbeddedSignupDiagnosticController::class, 'liveOauthProbe'])
+    ->name('debug.meta-embedded-signup.live-oauth-probe');
 
 Route::middleware(['auth', 'verified'])->prefix('app')->name('app.')->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
