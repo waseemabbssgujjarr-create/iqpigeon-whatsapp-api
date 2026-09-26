@@ -83,7 +83,7 @@ class ConnectionOnboardingService
     }
 
     /**
-     * @return array{onboarding_url: string, expires_at: \Illuminate\Support\Carbon}
+     * @return array{onboarding_url: string, session_token: string, expires_at: \Illuminate\Support\Carbon}
      */
     public function resumeOnboarding(Partner $partner, WhatsappConnection $connection): array
     {
@@ -124,6 +124,7 @@ class ConnectionOnboardingService
 
         return [
             'onboarding_url' => url('/oauth/meta/start?token='.urlencode($rawToken)),
+            'session_token' => $rawToken,
             'expires_at' => $expiresAt,
         ];
     }

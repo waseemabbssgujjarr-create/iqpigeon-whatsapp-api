@@ -30,6 +30,16 @@ class MetaEmbeddedSignupExtrasTest extends TestCase
         ]);
     }
 
+    public function test_business_app_coexistence_oauth_extras_match_js_launcher(): void
+    {
+        $encoded = MetaEmbeddedSignupExtras::encodeBusinessAppCoexistence();
+
+        $this->assertStringContainsString('whatsapp_business_app_onboarding', $encoded);
+        $this->assertStringContainsString('sessionInfoVersion', $encoded);
+        $this->assertStringContainsString('"3"', $encoded);
+        $this->assertStringNotContainsString('"version"', $encoded);
+    }
+
     public function test_coexistence_embedded_signup_js_extras_match_meta_business_app_flow(): void
     {
         $path = dirname(__DIR__, 3).'/resources/js/lib/metaEmbeddedSignup.js';

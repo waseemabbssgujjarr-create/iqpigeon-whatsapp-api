@@ -29,9 +29,9 @@ class MetaEmbeddedSignupService
         $appId = (string) config('services.meta.app_id');
         $redirectUri = url('/oauth/meta/callback');
 
-        $extras = $flow === self::FLOW_COEXISTENCE
-            ? MetaEmbeddedSignupExtras::v4Default()
-            : MetaEmbeddedSignupExtras::v4ApiAccessOnly();
+        $extrasParam = $flow === self::FLOW_COEXISTENCE
+            ? MetaEmbeddedSignupExtras::encodeBusinessAppCoexistence()
+            : MetaEmbeddedSignupExtras::encode(MetaEmbeddedSignupExtras::v4ApiAccessOnly());
 
         $query = http_build_query([
             'client_id' => $appId,
@@ -39,7 +39,7 @@ class MetaEmbeddedSignupService
             'state' => $rawToken,
             'response_type' => 'code',
             'config_id' => $configId,
-            'extras' => MetaEmbeddedSignupExtras::encode($extras),
+            'extras' => $extrasParam,
         ]);
 
         $version = ltrim((string) config('services.meta.graph_version', 'v21.0'), '/');

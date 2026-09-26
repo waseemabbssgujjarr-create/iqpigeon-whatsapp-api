@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\App;
 
+use App\Models\EmbeddedSignupSession;
 use App\Enums\ConnectionStatus;
 use App\Enums\SubscriptionStatus;
 use App\Models\Plan;
@@ -87,6 +88,51 @@ class ConnectionDashboardOnboardingTest extends TestCase
         $this->assertTrue($response->headers->has(Header::LOCATION));
         $location = (string) $response->headers->get(Header::LOCATION);
         $this->assertStringContainsString('/oauth/meta/start?token=', $location);
+    }
+
+    public function test_continue_setup_for_coexistence_draft_uses_js_flash_not_oauth_redirect(): void
+    {
+        $this->seed(ApiScopeSeeder::class);
+        ['user' => $user, 'partner' => $partner] = $this->createVerifiedOwner();
+        $this->seedOperationalPartnerSubscription($partner);
+
+        $connection = WhatsappConnection::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'partner_id' => $partner->id,
+            'connection_status' => ConnectionStatus::Pending,
+            'metadata' => ['onboarding_source' => 'coexistence'],
+        ]);
+
+        EmbeddedSignupSession::query()->create([
+            'partner_id' => $partner->id,
+            'whatsapp_connection_id' => $connection->id,
+            'state_token_hash' => hash('sha256', 'old'),
+            'status' => 'pending',
+            'expires_at' => now()->addHour(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withHeaders($this->inertiaHeaders())
+            ->post(route('app.connections.continue', ['uuid' => $connection->uuid]));
+
+        $response->assertRedirect(route('app.connections'));
+        $response->assertSessionHas('coexistence_onboarding.connection_uuid', $connection->uuid);
+        $response->assertSessionHas('coexistence_onboarding.session_token');
+    }
+
+    public function test_start_coexistence_does_not_redirect_to_oauth_meta_start(): void
+    {
+        $this->seed(ApiScopeSeeder::class);
+        ['user' => $user, 'partner' => $partner] = $this->createVerifiedOwner();
+        $this->seedOperationalPartnerSubscription($partner);
+
+        $response = $this->actingAs($user)
+            ->withHeaders($this->inertiaHeaders())
+            ->post(route('app.connections.start-coexistence'));
+
+        $response->assertRedirect(route('app.connections'));
+        $response->assertSessionHas('coexistence_onboarding.session_token');
+        $this->assertFalse($response->headers->has(Header::LOCATION));
     }
 
     public function test_non_inertia_start_uses_external_redirect(): void

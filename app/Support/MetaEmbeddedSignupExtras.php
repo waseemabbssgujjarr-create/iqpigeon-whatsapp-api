@@ -30,6 +30,26 @@ final class MetaEmbeddedSignupExtras
     }
 
     /**
+     * WhatsApp Business App coexistence (redirect OAuth / CRM onboarding_url).
+     * Must match resources/js/lib/metaEmbeddedSignup.js COEXISTENCE_EMBEDDED_SIGNUP_EXTRAS.
+     *
+     * @return array<string, mixed>
+     */
+    public static function businessAppCoexistence(): array
+    {
+        return [
+            'setup' => new \stdClass,
+            'featureType' => 'whatsapp_business_app_onboarding',
+            'sessionInfoVersion' => '3',
+        ];
+    }
+
+    public static function encodeBusinessAppCoexistence(): string
+    {
+        return json_encode(self::businessAppCoexistence(), JSON_UNESCAPED_SLASHES) ?: '{}';
+    }
+
+    /**
      * @param  array<string, mixed>  $extras
      */
     public static function assertV4WithoutLegacyKeys(array $extras): void

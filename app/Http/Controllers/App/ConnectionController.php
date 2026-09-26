@@ -201,6 +201,16 @@ class ConnectionController extends Controller
                 ->withErrors(['connect' => $exception->getMessage()]);
         }
 
+        $metadata = is_array($connection->metadata) ? $connection->metadata : [];
+        if (($metadata['onboarding_source'] ?? '') === 'coexistence') {
+            return redirect()
+                ->route('app.connections')
+                ->with('coexistence_onboarding', [
+                    'connection_uuid' => $connection->uuid,
+                    'session_token' => $result['session_token'],
+                ]);
+        }
+
         return $this->redirectToOnboarding($request, $result['onboarding_url']);
     }
 
